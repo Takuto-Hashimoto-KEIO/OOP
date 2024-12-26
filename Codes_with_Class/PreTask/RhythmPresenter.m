@@ -18,8 +18,8 @@ classdef RhythmPresenter
         function keystrokeSpeedPrompter(obj)
             %keystrokeSpeedPrompter 2ループで速度提示（黄色数字）
             count8 = 0;
-            d = GetSecs - obj.first_beep_time;
-            fprintf("差＝%d \n", d); % 最低でも2.459313e-01秒は余裕をもって到着している → 数字提示が早いとすると、beep_start_timeは本来もう少しだけ大きい値
+            % d = GetSecs - obj.first_beep_time;
+            % fprintf("差＝%d \n", d); % 最低でも2.459313e-01秒は余裕をもって到着している → 数字提示が早いとすると、beep_start_timeは本来もう少しだけ大きい値
             for loops = 1:2  % 2ループで速度提示
                 for keys = 1:4
                     while(1)

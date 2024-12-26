@@ -10,7 +10,7 @@ classdef SpeedChangeToReady
     methods (Access = public)
         function obj = SpeedChangeToReady(speed_changer)
             %SpeedChangeToReady このクラスのインスタンスを作成
-            %%% オブジェクトを初期化しない理由＆方法は？
+            %A% オブジェクトを初期化しない理由＆方法は？ コンストラクトの引数がないことを統一、＆　コンストラクトだけをしても動く
             obj.speed_changer = speed_changer;
             % obj.current_trial = current_trial;
         end
