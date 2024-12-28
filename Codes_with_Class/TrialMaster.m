@@ -8,12 +8,10 @@ classdef TrialMaster
 
         current_trial
         speed_changer
+        consecutive_same_speeds
         interval_index
         tap_interval
         Results
-
-        trial_task_time
-        KeyMapping
     end
 
     methods
@@ -23,12 +21,14 @@ classdef TrialMaster
             obj.settings = settings;
 
             % run_trial内で変更していく値
-            obj.speed_changer = 0; % 速度変更を指示する変数　0で維持、1で加速、2で減速
+            obj.speed_changer = 0; % 速度変更を指示する変数　0で維持、1で加速、-1で減速
+            obj.consecutive_same_speeds = 1;
             obj.interval_index = settings.IntervalIndexAtStart;
             obj.tap_interval = settings.TapIntervalList(obj.interval_index);
             obj.Results = settings.Results;
         end
 
+        % trialの開始～終了までを一貫して実行
         function obj = run_trial(obj, current_trial) %%% ここで変更したobjを外で保存するには？
 
             cfg = obj.settings; % 文字数削減のため、置換。主に% run_trial内で不変の値を呼び出す際に使用
@@ -56,43 +56,35 @@ classdef TrialMaster
             %%% いちいちsettingから引数を出さず、このスクリプト内で変数を出した方がいい？
             rhythm_presenter.keystrokeSpeedPrompter();
 
+
             % Taskフォルダにパスをつなぐ
             addpath("C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Hashimoto Resarch\Progress 2\20241205 codes with Class\Measurements\Codes_with_Class\Task");
 
-            task = TaskMaster(obj.Results, obj.current_trial, obj.tap_interval, cfg.KeyMapping); %A% Results丸ごと渡していいの？ → 仕方ない
-            task = task.beginning_to_end_of_task(cfg.TrialTaskTime);
+            % 打鍵taskの開始から時間経過による終了までを一貫して行う
+            task = TaskMaster(obj.Results, cfg.TrialTaskTime, obj.current_trial, obj.tap_interval, cfg.KeyMapping); %A% Results丸ごと渡していいの？ → 仕方ない
+            task = task.run_task();
             obj.Results.pressed_times = task.Results.pressed_times; %%%% TaskMasterで保存した値を移し替える手間！
 
-            % 再生終了操作
-            clear sound % [検証用]
-            cla; % [検証用]
+            
+            % PostTaskフォルダにパスをつなぐ
+            addpath("C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Hashimoto Resarch\Progress 2\20241205 codes with Class\Measurements\Codes_with_Class\PostTask");
 
+            % 1task終了時にそのtaskの打鍵判定を行う
+            task_ev = TaskEvaluator(obj.Results, obj.current_trial, obj.tap_interval, cfg.judge_range_parameters, task.keystrokes, cfg.TrialTaskTime);
+            task_ev = task_ev.run_post_task();
 
+            % 速度変更有無の判定と適用を行う（Main blockだけで実行するため、関数run_post_taskには含めない）
+            [obj.speed_changer, obj.consecutive_same_speeds, obj.interval_index] = task_ev.speed_regulator(obj.speed_changer, obj.consecutive_same_speeds, obj.interval_index, cfg.num_reference_trials, cfg.speed_changer_activate_points);
 
-            % % データの準備
-            % pressed_times = task.Results.pressed_times; % 配列 (20×4×11000)
-            % a = pressed_times(pressed_times ~= 0);
-            % 
-            % % 0を白、値がある場所を黒に変換
-            % binary_data = pressed_times > 0; % 0以外の要素を1、0の要素を0にする
-            % 
-            % % 可視化のための行列を展開 (20×(4×11000)に変換)
-            % visual_data = reshape(permute(binary_data, [1, 3, 2]), 20, []);
-            % 
-            % % 図の描画
-            % figure;
-            % imagesc(~visual_data); % 白黒反転（0:白、1:黒）
-            % colormap(gray); % グレースケールのカラーマップ
-            % colorbar; % カラーバーを表示
-            % xlabel('Columns (4×11000)'); % 列方向のラベル
-            % ylabel('Rows (Trials)'); % 行方向のラベル
-            % title('Pressed Times Visualization'); % タイトルの追加
-
-
+            % 再生終了操作 [検証用]
+            % clear sound % [検証用]
+            % cla; % [検証用]
 
             % 出力する値を整理　　　%A% 二度手間では？　→ 仕方ない
             obj.Results.interval_index_recorder(obj.current_trial) = obj.interval_index;
             obj.Results.tap_intervals(obj.current_trial) = obj.tap_interval;
+            obj.Results.judge = task_ev.Results.judge;
+            obj.Results.success_duration = task_ev.Results.success_duration;
         end
     end
 end

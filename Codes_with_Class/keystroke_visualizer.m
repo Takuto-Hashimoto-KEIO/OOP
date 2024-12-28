@@ -1,3 +1,5 @@
+% 打鍵時系列データが正しく記録されているかを図で可視化
+
 % データの準備
 pressed_times = trial.Results.pressed_times; % 配列 (20×4×18000)
 a = pressed_times(pressed_times ~= 0);

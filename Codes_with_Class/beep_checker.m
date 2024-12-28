@@ -1,3 +1,4 @@
+% このコードは、波形を図に描写することで、ビープの音源が正しく生成されているかを確認する
 TapIntervalList = [1/2, 1/2.3, 1/2.6, 1/2.9, 1/3.2, 1/3.5, 1/3.9, 1/4.3, 1/4.7, 1/5.2, 1/5.7];
 beepPatterns = generateAllBeepPatterns(TapIntervalList);
 

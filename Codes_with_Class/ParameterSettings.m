@@ -10,9 +10,14 @@ classdef ParameterSettings
         TrialTaskTime
 
         % 打鍵成功判定区間のパラメータ
-        keystroke_relaxation_range % 打鍵成功判定を大きく緩和する割合　task全体での要求打鍵数の1/4
+        relaxation_percentage % 打鍵成功判定を大きく緩和する範囲の、task全体での要求打鍵数に占める割合
         tolerance_percentage_1 % task開始直後の打鍵成功許容範囲の割合 少し緩める
         tolerance_percentage_2 % 通常の打鍵成功許容範囲の割合
+        judge_range_parameters % 上記3つのパラメータをまとめてこの構造体に格納
+
+        % 速度変更に関するパラメータ
+        num_reference_trials
+        speed_changer_activate_points
 
         % ブロックごとに代わる条件
         IntervalIndexAtStart
@@ -39,9 +44,18 @@ classdef ParameterSettings
             obj.TrialTaskTime = 20; % 1trialのtask実行時間
 
             % 打鍵成功判定区間のパラメータ
-            obj.keystroke_relaxation_range = 1; % 打鍵成功判定を大きく緩和する割合　task全体での要求打鍵数の1/4
-            obj.tolerance_percentage_1 = 0.75; % task開始直後の打鍵成功許容範囲の割合 少し緩める　0.5~1.0まで対応可能
-            obj.tolerance_percentage_2 = 0.75; % 通常の打鍵成功許容範囲の割合　0.5~1.0まで対応可能
+            obj.relaxation_percentage = 1; % 打鍵成功判定を大きく緩和する範囲の割合　task全体での要求打鍵数に対する割合で記述
+            obj.tolerance_percentage_1 = 0.5; % task開始直後の打鍵成功許容範囲の割合 少し緩める　0.5~1.0まで対応可能
+            obj.tolerance_percentage_2 = 0.5; % 通常の打鍵成功許容範囲の割合　0.5~1.0まで対応可能
+            obj.judge_range_parameters = struct( ...
+                'relaxation_percentage', [obj.relaxation_percentage], ...
+                'tolerance_percentage_1', [obj.tolerance_percentage_1], ...
+                'tolerance_percentage_2', [obj.tolerance_percentage_2] ...
+                );
+
+            % 速度変更に関するパラメータ
+            obj.num_reference_trials = 3; % trial間の速度変更を決める際（クラスTaskEvaluator内の関数speed_regulator）、直近何trialの打鍵成功持続時間を参照するか　[要検討] %%%
+            obj.speed_changer_activate_points = 5; % trial間の速度変更を決める際（クラスTaskEvaluator内の関数speed_regulator）、直近何trialで同じ打鍵速度が続いたら速度変更を可能にするか　[要検討] %%%
 
             % ブロックごとに代わる条件
             obj.IntervalIndexAtStart = intervalIndexAtStart;
@@ -59,8 +73,8 @@ classdef ParameterSettings
                 'tap_acceptance_start_times', zeros(obj.NumTrials, obj.NumLoops, obj.NumKeys), ...
                 'display_times', zeros(obj.NumTrials, obj.NumLoops, obj.NumKeys), ...
                 'pressed_times', zeros(obj.NumTrials, obj.NumKeys, 18000), ...
-                'judge', zeros(obj.NumTrials, 1), ...
-                'success_duration', zeros(obj.NumTrials, 1) ...
+                'judge', NaN(obj.NumTrials, obj.NumLoops * obj.NumKeys), ...
+                'success_duration', NaN(obj.NumTrials, 1) ...
                 );
         end
 

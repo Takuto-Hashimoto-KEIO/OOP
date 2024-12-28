@@ -6,48 +6,52 @@ classdef TaskMaster
 
         % 可変の変数
         Results
-        num_loops
-        num_keys
-        task_terminater
-
-        miss_ditected
-        success_ditected
 
         % 不変の変数
+        trial_task_time
         current_trial
         tap_interval
         key_mapping
 
         % 可変の変数
+        keystrokes
+        num_loops
+        num_keys
         num_keystroke_sections
+
+        miss_ditected
+        success_ditected
+        draw_counter
         next_draw_time
         next_section_update_time
+        task_terminater
     end
 
     methods
-        function obj = TaskMaster(Results, current_trial, tap_interval, key_mapping)
+        function obj = TaskMaster(Results, trial_task_time, current_trial, tap_interval, key_mapping)
             %TASKMASTER このクラスのインスタンスを作成
             %   詳細説明をここに記述
             obj.Results = Results;
-            obj.num_loops = 1;
-            obj.num_keys = 1;
-            obj.task_terminater = 0;
 
-            obj.miss_ditected = 0;
-            obj.success_ditected = 0;
-
+            obj.trial_task_time = trial_task_time;
             obj.current_trial = current_trial;
             obj.tap_interval = tap_interval;
             obj.key_mapping = key_mapping;
+            
+            obj.num_loops = 1;
+            obj.num_keys = 1;
+            obj.num_keystroke_sections = 1; % 今回のtaskでいくつめの打鍵判定区間かを記録]
 
-            obj.num_keystroke_sections = 1; % このtrialでいくつめの打鍵判定区間かを記録
+            obj.miss_ditected = 0;
+            obj.success_ditected = 0;
+            obj.draw_counter = 0; % 今回のtaskで何回目の数字提示かを記録
             obj.next_draw_time = obj.Results.beep_start_times(obj.current_trial) + (8 + 1/2)*obj.tap_interval;
             obj.next_section_update_time = obj.Results.beep_start_times(obj.current_trial) + (8 + 1)*obj.tap_interval;
+            obj.task_terminater = 0;
         end
 
-        function obj = beginning_to_end_of_task(obj, trial_task_time)
-            % beginning_to_end_of_task taskの開始から終了までを一貫して実行
-            %   詳細説明をここに記述
+        % run_task taskの開始から終了までを一貫して実行
+        function obj = run_task(obj)
 
             % 打鍵測定の準備
             [while_count, draw_stopper] = obj.preparers();
@@ -63,25 +67,27 @@ classdef TaskMaster
                 end
 
                 % 時刻判定（数字提示と打鍵判定区間の更新を内包）
-                [obj, draw_stopper] = time_keeper(obj, draw_stopper, trial_task_time);
+                [obj, draw_stopper] = time_keeper(obj, draw_stopper, obj.trial_task_time);
                 if obj.task_terminater == 1 % task終了のため、while文を強制終了
                     break;
                 end
 
-                % miss_ditected, success_ditectedをどこかでリセットする必要あり！
-
                 WaitSecs(0.001);
-
-                % [検証用]
-                % disp(['while_count: ', num2str(while_count)]);
-                % fprintf('\n');
             end
 
+            % 打鍵数に関する値を構造体にして保存
+            obj.keystrokes = struct( ...
+                'num_loops', obj.num_loops, ...
+                'num_keys', obj.num_keys, ...
+                'num_keystroke_sections', obj.num_keystroke_sections ...
+                );
+
             fprintf('\n');
+            fprintf('while_count = %d\n', while_count); % [検証用]
         end
     end
 
-    methods(Access = private)
+    methods (Access = private)
         % 打鍵記録
         function [obj, keyIsDown, pressed_keys, while_count] = key_recoder(obj, while_count)
             while_count = while_count + 1;
@@ -97,7 +103,7 @@ classdef TaskMaster
         end
 
         % リアルタイム打鍵成功判定(とコマンドウィンドウへの表示)
-        function obj = keystroke_realtime_judger(obj, pressed_keys) % 打鍵の成功判定
+        function obj = keystroke_realtime_judger(obj, pressed_keys)
 
             % 誤ったキーが押されているかチェック
             key_mapping_index_array = 1:length(obj.key_mapping);
@@ -129,6 +135,7 @@ classdef TaskMaster
             if GetSecs >= obj.next_draw_time && draw_stopper == 0 % 最初のビープ音時を基準に、一つ前の数字提示からtap_interval経過していたら、次の数字(現在成功判定中の打鍵に対応)の提示に切り替える
                 % 時間経過による数字提示
                 draw_stopper = number_presenter(obj);
+                obj.draw_counter = obj.draw_counter + 1;
             elseif GetSecs >= obj.next_section_update_time % ビープ音開始時を基準に、一つ前の打鍵受付終了時刻からtap_interval経過していたら、打鍵判定区間を更新
                 % 時間経過によるfail判定
                 fail_judger(obj);
