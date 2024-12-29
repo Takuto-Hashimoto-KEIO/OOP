@@ -85,6 +85,7 @@ classdef TrialMaster
             obj.Results.tap_intervals(obj.current_trial) = obj.tap_interval;
             obj.Results.judge = task_ev.Results.judge;
             obj.Results.success_duration = task_ev.Results.success_duration;
+            obj.Results.beep_times_keys = task_ev.Results.beep_times_keys;
         end
     end
 end

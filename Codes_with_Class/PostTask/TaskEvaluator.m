@@ -35,30 +35,6 @@ classdef TaskEvaluator
             % sendCommand(daq,6); % Blank
             blank_start_time = GetSecs; % [検証用]
 
-
-            % % 打鍵時系列データが正しく記録されているかを図で可視化
-            % 
-            % % データの準備
-            % pressed_times = obj.Results.pressed_times; % 配列 (20×4×18000)
-            % a = pressed_times(pressed_times ~= 0);
-            % 
-            % % 0を白、値がある場所を黒に変換
-            % binary_data = pressed_times > 0; % 0以外の要素を1、0の要素を0にする
-            % 
-            % % 可視化のための行列を展開 (20×(4×11000)に変換)
-            % visual_data = reshape(permute(binary_data, [1, 3, 2]), 20, []);
-            % 
-            % % 図の描画
-            % figure;
-            % imagesc(~visual_data); % 白黒反転（0:白、1:黒）
-            % colormap(gray); % グレースケールのカラーマップ
-            % colorbar; % カラーバーを表示
-            % xlabel('Columns (4×11000)'); % 列方向のラベル
-            % ylabel('Rows (Trials)'); % 行方向のラベル
-            % title('Pressed Times Visualization'); % タイトルの追加
-
-
-
             % 打鍵判定
             obj = obj.run_keystrokes_judger();
 
@@ -122,8 +98,11 @@ classdef TaskEvaluator
         function obj = run_keystrokes_judger(obj)
 
             judger = KeystrokesJudger(obj);
-            judge_this_trial = judger.keystrokes_judger();
+            [judger, judge_this_trial] = judger.run_keystrokes_judger();
 
+            % このtrialで作成したビープ音の時系列データを、全trialのビープ音を網羅したbeep_times_keys配列に格納
+            obj.Results.beep_times_keys(obj.current_trial, 1:size(judger.beep_times_keys, 1), :) = judger.beep_times_keys;
+            
             % このtrialの打鍵判定を、全trialの判定結果を網羅したjudge配列に格納
             obj.Results.judge(obj.current_trial, 1:obj.keystrokes.num_keystroke_sections) = judge_this_trial;
         end

@@ -28,7 +28,7 @@ classdef KeystrokesJudger
         end
 
         % 打鍵判定をする（judge_this_trial配列作成）までの全体
-        function judge_this_trial = keystrokes_judger(obj)
+        function [obj, judge_this_trial] = run_keystrokes_judger(obj)
             all_data = obj.task_ev; % このクラスの入力であるオブジェクトtask_evの全体
 
             % beep音の鳴った時刻の配列データ（キー別）を作成
@@ -51,7 +51,7 @@ classdef KeystrokesJudger
 
             % beep音が鳴った時刻を計算して格納
             first_beep_time_in_task = beep_start_time + (8 + 1/2) * tap_interval; % 初期値、最初に白数字の1を表示する時刻
-            current_time = first_beep_time_in_task:tap_interval:(first_beep_time_in_task + trial_task_time); % 時刻データの生成
+            current_time = first_beep_time_in_task:tap_interval:(first_beep_time_in_task + trial_task_time - 0.01); % 時刻データの生成。- 0.01は、trial_task_time秒に重なる最後のビープが鳴ったと仮定しないように補正。
             num_beeps = numel(current_time); % ビープ音が鳴った（本来鳴っているはずの）数
             beep_times(1:num_beeps) = current_time; % ビープ音の提示時刻を示す配列に格納
 
@@ -66,6 +66,11 @@ classdef KeystrokesJudger
                 else
                     beep_times_keys(1:numel(selected_indices), 4) = beep_times(selected_indices);
                 end
+            end
+
+            % beep_times_keysの最終行目（最終loop）に格納された値が全てNaNならば、その行を削除する
+            if all(isnan(beep_times_keys(end, :)))
+                beep_times_keys(end, :) = [];
             end
         end
 
