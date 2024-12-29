@@ -4,7 +4,6 @@ classdef TrialMaster
 
     properties
         settings
-        BeepPatterns
 
         current_trial
         speed_changer
@@ -74,7 +73,7 @@ classdef TrialMaster
             task_ev = task_ev.run_post_task();
 
             % 速度変更有無の判定と適用を行う（Main blockだけで実行するため、関数run_post_taskには含めない）
-            [obj.speed_changer, obj.interval_index, obj.consecutive_same_speeds] = task_ev.speed_regulator(obj.speed_changer, obj.consecutive_same_speeds, obj.interval_index, cfg.num_reference_trials, cfg.speed_changer_activate_points);
+            [obj.speed_changer, obj.consecutive_same_speeds, obj.interval_index] = task_ev.speed_regulator(obj.speed_changer, obj.consecutive_same_speeds, obj.interval_index, cfg.num_reference_trials, cfg.speed_changer_activate_points);
 
             % 再生終了操作 [検証用]
             % clear sound % [検証用]
@@ -83,6 +82,12 @@ classdef TrialMaster
             % 出力する値を整理　　　%A% 二度手間では？　→ 仕方ない
             obj.Results.interval_index_recorder(obj.current_trial) = obj.interval_index;
             obj.Results.tap_intervals(obj.current_trial) = obj.tap_interval;
+            obj.Results.beep_times_keys = task_ev.Results.beep_times_keys;
+            obj.Results.keystrokes.num_loops = task.keystrokes.num_loops;
+            obj.Results.keystrokes.num_keys = task.keystrokes.num_keys;
+            obj.Results.keystrokes.num_keystroke_sections = task.keystrokes.num_keystroke_sections;
+            obj.Results.window_delimiters.acception_window_start = task_ev.window_delimiters.acception_window_start;
+            obj.Results.window_delimiters.acception_window_end = task_ev.window_delimiters.acception_window_end;
             obj.Results.judge = task_ev.Results.judge;
             obj.Results.success_duration = task_ev.Results.success_duration;
         end

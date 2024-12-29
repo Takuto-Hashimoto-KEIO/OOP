@@ -4,7 +4,6 @@ classdef TrialMaster
 
     properties
         settings
-        BeepPatterns
 
         current_trial
         speed_changer
@@ -83,9 +82,14 @@ classdef TrialMaster
             % 出力する値を整理　　　%A% 二度手間では？　→ 仕方ない
             obj.Results.interval_index_recorder(obj.current_trial) = obj.interval_index;
             obj.Results.tap_intervals(obj.current_trial) = obj.tap_interval;
+            obj.Results.beep_times_keys = task_ev.Results.beep_times_keys;
+            obj.Results.keystrokes.num_loops(obj.current_trial) = task.keystrokes.num_loops;
+            obj.Results.keystrokes.num_keys(obj.current_trial) = task.keystrokes.num_keys;
+            obj.Results.keystrokes.num_keystroke_sections(obj.current_trial) = task.keystrokes.num_keystroke_sections;
+            obj.Results.window_delimiters.acception_window_start = task_ev.window_delimiters.acception_window_start;
+            obj.Results.window_delimiters.acception_window_end = task_ev.window_delimiters.acception_window_end;
             obj.Results.judge = task_ev.Results.judge;
             obj.Results.success_duration = task_ev.Results.success_duration;
-            obj.Results.beep_times_keys = task_ev.Results.beep_times_keys;
         end
     end
 end

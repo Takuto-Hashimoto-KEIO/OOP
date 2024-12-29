@@ -29,7 +29,7 @@ pause(1);
 trial = TrialMaster(settings); %A% ここでsettingまるごと入れていいの？ →　仕方ない
 
 % for current_trial = 1:settings.NumTrials
-for current_trial = 1:1 % 仮で少ないtrialだけ回すときの[検証用]
+for current_trial = 1:3 % 仮で少ないtrialだけ回すときの[検証用]
 
     % trial開始～終了までを実行（1taskごとの打鍵判定処理を内包）
     trial = trial.run_trial(current_trial);

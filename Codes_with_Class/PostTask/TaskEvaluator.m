@@ -4,6 +4,7 @@ classdef TaskEvaluator
 
     properties
         Results
+        window_delimiters
 
         current_trial
         tap_interval
@@ -43,7 +44,7 @@ classdef TaskEvaluator
 
             % 「Blank」の画面提示の終了
             blank_time_range = 5 - (GetSecs - blank_start_time); % blankの時間が全体で5秒間になるよう調整
-            fprintf('打鍵判定＆解析に要した時間 = %d\n', 5 - blank_time_range); % [検証用]　だいたい80 msぐらいかかってる
+            fprintf('打鍵判定＆解析に要した時間 = %d\n', 5 - blank_time_range); % [検証用]　だいたい20 msぐらいかかってる
             pause(blank_time_range); % 5秒間待機
             cla;
         end
@@ -100,10 +101,13 @@ classdef TaskEvaluator
             judger = KeystrokesJudger(obj);
             [judger, judge_this_trial] = judger.run_keystrokes_judger();
 
-            % このtrialで作成したビープ音の時系列データを、全trialのビープ音を網羅したbeep_times_keys配列に格納
+            % このtrialで作成した打鍵判定の時間窓を、配列に格納
+            obj.window_delimiters = judger.window_delimiters;
+
+            % このtrialで作成したビープ音の時系列データを、全trialのビープ音を網羅したobj.Results.beep_times_keys配列に格納
             obj.Results.beep_times_keys(obj.current_trial, 1:size(judger.beep_times_keys, 1), :) = judger.beep_times_keys;
-            
-            % このtrialの打鍵判定を、全trialの判定結果を網羅したjudge配列に格納
+
+            % このtrialの打鍵判定を、全trialの判定結果を網羅したobj.Results.judge配列に格納
             obj.Results.judge(obj.current_trial, 1:obj.keystrokes.num_keystroke_sections) = judge_this_trial;
         end
 
