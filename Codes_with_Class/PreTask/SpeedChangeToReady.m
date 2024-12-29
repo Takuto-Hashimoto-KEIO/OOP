@@ -22,7 +22,7 @@ classdef SpeedChangeToReady
             pause(1);
             cla;
 
-            % [pause_rest_time, obj] = speedChangeNotifier(obj);
+            [pause_rest_time, obj] = speedChangeNotifier(obj);
             % obj.restNotifier(pause_rest_time);
             % 
             % % sendCommand(daq,3); % Ready
@@ -32,7 +32,7 @@ classdef SpeedChangeToReady
 
     methods (Access = private)
         function [pause_rest_time, obj] = speedChangeNotifier(obj)
-            pause_rest_time = 7; % 初期値（速度変更がある場合）
+            pause_rest_time = 7; % "Rest"を表示する時間の初期値（速度変更がある場合）
 
             % 速度変更を被験者に通知
             if obj.speed_changer == 1
@@ -47,7 +47,7 @@ classdef SpeedChangeToReady
                 cla;
                 obj.speed_changer = 0;
             else
-                pause_rest_time = 9; % 速度変更がない場合は変更している
+                pause_rest_time = 9; % 速度変更がない場合は、"Rest"を表示する時間を変更している
             end
         end
     end

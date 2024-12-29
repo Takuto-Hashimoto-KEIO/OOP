@@ -76,6 +76,7 @@ classdef ResultsKeeper
 
             % 保存用の構造体を作成
             block = struct( ...
+                'tap_interval_list', obj.trial.Results.tap_interval_list, ...
                 'interval_index_recorder', obj.trial.Results.interval_index_recorder, ...
                 'tap_intervals', obj.trial.Results.tap_intervals, ...
                 'beep_times_keys', obj.trial.Results.beep_times_keys, ...
@@ -128,7 +129,7 @@ classdef ResultsKeeper
 
             % 保存先のファイル名とパスを作成
             block_date = datetime('now', 'Format', 'yyyyMMdd_HHmmss');
-            block_filename = sprintf('Block_Result_%s_%s_%s.mat', block_date, num_block, num_participant);
+            block_filename = sprintf('Block_Result_%s_block%s_%s.mat', num_participant, num_block, block_date);
             save_path = fullfile(participant_folder, block_filename);
         end
     end

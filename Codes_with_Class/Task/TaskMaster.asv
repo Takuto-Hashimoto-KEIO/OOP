@@ -18,6 +18,7 @@ classdef TaskMaster
         num_loops
         num_keys
         num_keystroke_sections
+
         miss_ditected
         success_ditected
         draw_counter
@@ -36,15 +37,11 @@ classdef TaskMaster
             obj.current_trial = current_trial;
             obj.tap_interval = tap_interval;
             obj.key_mapping = key_mapping;
-
-            obj.keystrokes = struct[ ...
-                'relaxation_percentage', [obj.relaxation_percentage], ...
-                'tolerance_percentage_1', [obj.tolerance_percentage_1], ...
-                'tolerance_percentage_2', [obj.tolerance_percentage_2] ...
-                );];
+            
             obj.num_loops = 1;
             obj.num_keys = 1;
-            obj.num_keystroke_sections = 1; % 今回のtaskでいくつめの打鍵判定区間かを記録
+            obj.num_keystroke_sections = 1; % 今回のtaskでいくつめの打鍵判定区間かを記録]
+
             obj.miss_ditected = 0;
             obj.success_ditected = 0;
             obj.draw_counter = 0; % 今回のtaskで何回目の数字提示かを記録
@@ -75,14 +72,15 @@ classdef TaskMaster
                     break;
                 end
 
-                % miss_ditected, success_ditectedをどこかでリセットする必要あり！
-
                 WaitSecs(0.001);
-
-                % [検証用]
-                % disp(['while_count: ', num2str(while_count)]);
-                % fprintf('\n');
             end
+
+            % 打鍵数に関する値を構造体にして保存
+            obj.keystrokes = struct( ...
+                'num_loops', obj.num_loops, ...
+                'num_keys', obj.num_keys, ...
+                'num_keystroke_sections', obj.num_keystroke_sections ...
+                );
 
             fprintf('\n');
             fprintf('while_count = %d\n', while_count); % [検証用]

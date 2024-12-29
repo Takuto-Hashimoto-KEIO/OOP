@@ -23,14 +23,15 @@ classdef TrialMaster
             obj.speed_changer = 0; % 速度変更を指示する変数　0で維持、1で加速、-1で減速
             obj.consecutive_same_speeds = 1;
             obj.interval_index = settings.IntervalIndexAtStart;
-            obj.tap_interval = settings.TapIntervalList(obj.interval_index);
             obj.Results = settings.Results;
         end
 
         % trialの開始～終了までを一貫して実行
-        function obj = run_trial(obj, current_trial) %%% ここで変更したobjを外で保存するには？
+        function obj = run_trial(obj, current_trial, tap_interval_list)
 
             cfg = obj.settings; % 文字数削減のため、置換。主に% run_trial内で不変の値を呼び出す際に使用
+            
+            obj.tap_interval = tap_interval_list(obj.interval_index); % 打鍵間隔を更新
 
             % Pretaskフォルダにパスをつなぐ
             addpath("C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Hashimoto Resarch\Progress 2\20241205 codes with Class\Measurements\Codes_with_Class\PreTask");

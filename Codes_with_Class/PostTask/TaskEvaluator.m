@@ -62,7 +62,7 @@ classdef TaskEvaluator
                     fprintf('%d, ', last_x_durations(i));
                 end
                 
-                if consecutive_same_speeds >= speed_changer_activate_points % 最低でも連続speed_changer_activate_points trialは同じ要求打鍵速度で %%%
+                if consecutive_same_speeds >= speed_changer_activate_points % 最低でも連続speed_changer_activate_points trialは同じ要求打鍵速度を保つ %%%
                     if all(last_x_durations >= obj.trial_task_time * 0.9) && interval_index <= 10
                         interval_index = interval_index + 1; % 速度上昇
                         speed_changer = 1;
@@ -85,7 +85,7 @@ classdef TaskEvaluator
             if speed_changer == 0
                 consecutive_same_speeds = consecutive_same_speeds + 1;
             else
-                consecutive_same_speeds = 0;
+                consecutive_same_speeds = 1;
             end
         end
 
