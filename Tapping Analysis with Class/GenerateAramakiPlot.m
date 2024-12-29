@@ -4,6 +4,7 @@ classdef GenerateAramakiPlot
 
     properties
         participant_name
+        num_block
 
         num_trials
         num_keys
@@ -32,15 +33,17 @@ classdef GenerateAramakiPlot
                 plot_data(obj, folder_path);
             end
         end
+    end
 
+    methods (Access = private)
         % データのロードと格納
         function obj = load_data(obj, folder_path, files, file_idx)
-            %METHOD1 このメソッドの概要をここに記述
-            %   詳細説明をここに記述
+
             data = load(fullfile(folder_path, files(file_idx).name));
 
             % データを抽出
             obj.participant_name = data.num_participant;
+            obj.num_block = data.num_block;
             block = data.block;
             % tap_acceptance_start_times = block.tap_acceptance_start_times;
             % display_times = block.display_times;
@@ -51,7 +54,7 @@ classdef GenerateAramakiPlot
             obj.judge = block.judge;
             
             % trial数を取得
-            obj.num_trials = size(obj.judge, 1); %%% num_intervalsはどこで使う？
+            obj.num_trials = size(obj.judge, 1);
 
             % キーの種類数を取得
             obj.num_keys = size(obj.beep_times_keys, 3);
@@ -60,7 +63,7 @@ classdef GenerateAramakiPlot
         % 各trialのプロットを生成
         function plot_data(obj, folder_path)
             % trialごとに処理を実行
-            for trial_idx = 1:3
+            for trial_idx = 1:obj.num_trials %%% [検証用]のために6にしている、本来はobj.num_trials
                 figure;
                 hold on;
 
@@ -131,11 +134,11 @@ classdef GenerateAramakiPlot
                         'DisplayName', [keys{key_idx} ' (' keys_legend{key_idx} ')']);
                 end
 
-                % 打鍵受付範囲の計算とプロット
+                % 打鍵受付範囲の取得とプロット
                 for loop = 1:obj.keystrokes.num_loops(trial_idx)
 
                     % 打鍵受付範囲を塗りつぶしで表示
-                    for key = 1:obj.keystrokes.num_keys(trial_idx)
+                    for key = 1:obj.num_keys
 
                         % 到達した打鍵判定区間以降は、obj.judgeにNaNが格納されているため処理を行わない
                         if obj.keystrokes.num_keystroke_sections(trial_idx) < 4*(loop - 1) + key
@@ -170,7 +173,7 @@ classdef GenerateAramakiPlot
                 yticklabels({'NUM', 'F', 'I', 'E', 'J'}); % NUMを含めたラベル
                 xlabel('Time (sec)');
                 ylabel('Keys');
-                title(['Trial ' num2str(trial_idx) ' - ' obj.participant_name]);
+                title(['Subject ' obj.participant_name ' block ' obj.num_block ' trial ' num2str(trial_idx)]);
 
                 % 塗りつぶし部分を凡例に含めないための調整
                 legend('Location', 'best');
@@ -186,7 +189,7 @@ classdef GenerateAramakiPlot
                 end
 
                 % MATLAB Figure (.fig)形式で保存パスを設定して保存
-                savefig(fullfile(output_folder, [obj.participant_name '_trial_' num2str(trial_idx) '_graph.fig']));
+                savefig(fullfile(output_folder, ['subject_' obj.participant_name '_block_' obj.num_block '_trial_' num2str(trial_idx) '_graph.fig']));
             end
         end
     end
