@@ -19,6 +19,8 @@ classdef TaskMaster
         num_keys
         num_keystroke_sections
 
+        txt = text(0.5, 0.5, num2str(0), 'Color', 'y', 'FontSize', 100, 'HorizontalAlignment', 'center');
+
         miss_ditected
         success_ditected
         draw_counter
@@ -37,7 +39,7 @@ classdef TaskMaster
             obj.current_trial = current_trial;
             obj.tap_interval = tap_interval;
             obj.key_mapping = key_mapping;
-            
+
             obj.num_loops = 1;
             obj.num_keys = 1;
             obj.num_keystroke_sections = 1; % 今回のtaskでいくつめの打鍵判定区間かを記録]
@@ -51,10 +53,15 @@ classdef TaskMaster
         end
 
         % run_task taskの開始から終了までを一貫して実行
-        function obj = run_task(obj)
+        function obj = run_task(obj, txt)
 
             % 打鍵測定の準備
             [while_count, draw_stopper] = obj.preparers();
+            obj.txt = txt; % 描画用オブジェクトを用意
+            if ~isvalid(obj.txt) % txtが有効か確認
+                error('渡されたtxtオブジェクトが無効です。');
+            end
+            obj.txt.Color = 'w'; % 描画用オブジェクトの色を更新
 
             while(1) % 打鍵記録、リアルタイム打鍵成功判定、数字提示、打鍵判定区間更新をtrial_task_timeが経過するまで繰り返す
 
@@ -134,7 +141,7 @@ classdef TaskMaster
 
             if GetSecs >= obj.next_draw_time && draw_stopper == 0 % 最初のビープ音時を基準に、一つ前の数字提示からtap_interval経過していたら、次の数字(現在成功判定中の打鍵に対応)の提示に切り替える
                 % 時間経過による数字提示
-                draw_stopper = number_presenter(obj);
+                [draw_stopper, obj] = number_presenter(obj);
                 obj.draw_counter = obj.draw_counter + 1;
             elseif GetSecs >= obj.next_section_update_time % ビープ音開始時を基準に、一つ前の打鍵受付終了時刻からtap_interval経過していたら、打鍵判定区間を更新
                 % 時間経過によるfail判定
@@ -146,10 +153,9 @@ classdef TaskMaster
         end
 
         % 被験者に打鍵を指示する数字を提示（白色数字）
-        function draw_stopper = number_presenter(obj)
-            cla;
-            text(0.5, 0.5, num2str(obj.num_keys), 'Color', 'w', 'FontSize', 100, 'HorizontalAlignment', 'center'); % 白色の数字を表示
-            drawnow
+        function [draw_stopper, obj] = number_presenter(obj)
+            obj.txt.String = num2str(obj.num_keys);
+            drawnow;
             draw_stopper = 1; % 次の打鍵判定区間に切り替わるまで描画をロック
         end
 

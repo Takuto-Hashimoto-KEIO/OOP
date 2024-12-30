@@ -27,12 +27,11 @@ classdef TaskEvaluator
         end
 
         % run_post_task 直前のtaskの打鍵判定～打鍵成功持続時間の計算を一貫して実行
-        function obj = run_post_task(obj)
+        function obj = run_post_task(obj, txt)
 
             % 「Blank」を画面提示
-            cla;
-            text(0.5, 0.5, 'Blank', 'Color', 'w', 'FontSize', 100, 'HorizontalAlignment', 'center');
-            drawnow
+            txt.String = 'Blank';
+            drawnow;
             % sendCommand(daq,6); % Blank
             blank_start_time = GetSecs; % [検証用]
 
@@ -46,7 +45,6 @@ classdef TaskEvaluator
             blank_time_range = 5 - (GetSecs - blank_start_time); % blankの時間が全体で5秒間になるよう調整
             fprintf('打鍵判定＆解析に要した時間 = %d\n', 5 - blank_time_range); % [検証用]　だいたい20 msぐらいかかってる
             pause(blank_time_range); % 5秒間待機
-            cla;
         end
 
         % 速度変更有無の判定と適用（Main blockだけで実行するため、関数run_post_taskには含めない）
@@ -54,7 +52,7 @@ classdef TaskEvaluator
             x = num_reference_trials; % 直近何trialを参照するか[要検討] %%%
 
             fprintf('consecutive_same_speeds = %d\n', consecutive_same_speeds);
-            
+
             if obj.current_trial >= x % 現在がx trial以上の場合
                 last_x_durations = obj.Results.success_duration(obj.current_trial - (x-1):obj.current_trial);
                 fprintf('直近%dtrialの打鍵成功持続時間 = ', x);

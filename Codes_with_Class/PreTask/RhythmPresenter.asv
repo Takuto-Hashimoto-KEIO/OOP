@@ -11,23 +11,26 @@ classdef RhythmPresenter
         function obj = RhythmPresenter(tap_interval, beep_start_time)
             %RhythmPresenter このクラスのインスタンスを作成
             obj.tap_interval = tap_interval;
-            obj.first_beep_time = beep_start_time + tap_interval/2 + 0.01; % 音源が1/2打鍵間隔分の空白を最初に持つため。それに合わせる
-            %%% beep_start_timeが0.02秒くらい実際より小さい値を記録している？→ ビープ音再生開始時刻が
+            obj.first_beep_time = beep_start_time + tap_interval/2; % 音源が1/2打鍵間隔分の空白を最初に持つため。それに合わせる
+            %%% beep_start_timeが0.02秒くらい実際より小さい値を記録している？→ 0.02~0.03を足して、ラグの微調整が必要？
         end
 
-        function keystrokeSpeedPrompter(obj)
-            %keystrokeSpeedPrompter 2ループで速度提示（黄色数字）
+        %　run_rhythm_presenter 2ループで速度提示（黄色数字）
+        function txt = run_rhythm_presenter(obj)
+
             count8 = 0;
-            d = GetSecs - obj.first_beep_time;
-            fprintf("差＝%d \n", d); % 最低でも2.459313e-01秒は余裕をもって到着している → 数字提示が早いとすると、beep_start_timeは本来もう少しだけ大きい値
+            tic;
+            txt = text(0.5, 0.5, num2str(0), 'Color', 'y', 'FontSize', 100, 'HorizontalAlignment', 'center'); % 描画用オブジェクトを用意
+
+            % d = GetSecs - obj.first_beep_time;
+            % fprintf("差＝%d \n", d); % 最低でも2.459313e-01秒は余裕をもって到着している → 数字提示が早いとすると、beep_start_timeは本来もう少しだけ大きい値
             for loops = 1:2  % 2ループで速度提示
                 for keys = 1:4
                     while(1)
                         if GetSecs >= obj.first_beep_time + count8*obj.tap_interval % 最初のビープ音時を基準に、一つ前の数字提示からtap_interval経過していたら、次の数字提示に切り替える
-                            cla;
                             % a = GetSecs;
-                            text(0.5, 0.5, num2str(keys), 'Color', 'y', 'FontSize', 100, 'HorizontalAlignment', 'center'); % 黄色の数字を表示
-                            drawnow
+                            txt.String = num2str(keys);
+                            drawnow;
                             % b = a - (obj.first_beep_time + count8*obj.tap_interval);
                             % fprintf("差＝%d \n", b); % 最大で0.0012秒の遅れ
                             count8 = count8 + 1;
@@ -36,6 +39,7 @@ classdef RhythmPresenter
                     end
                 end
             end
+            % tic;
         end
     end
 end

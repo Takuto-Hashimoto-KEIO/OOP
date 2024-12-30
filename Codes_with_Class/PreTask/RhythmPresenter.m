@@ -15,19 +15,21 @@ classdef RhythmPresenter
             %%% beep_start_timeが0.02秒くらい実際より小さい値を記録している？→ 0.02~0.03を足して、ラグの微調整が必要？
         end
 
-        function keystrokeSpeedPrompter(obj)
-            %keystrokeSpeedPrompter 2ループで速度提示（黄色数字）
+        %　run_rhythm_presenter 2ループで速度提示（黄色数字）
+        function run_rhythm_presenter(obj, txt)
+
+            txt.Color = 'y'; % 描画の色を黄色に変更
             count8 = 0;
+
             % d = GetSecs - obj.first_beep_time;
             % fprintf("差＝%d \n", d); % 最低でも2.459313e-01秒は余裕をもって到着している → 数字提示が早いとすると、beep_start_timeは本来もう少しだけ大きい値
             for loops = 1:2  % 2ループで速度提示
                 for keys = 1:4
                     while(1)
                         if GetSecs >= obj.first_beep_time + count8*obj.tap_interval % 最初のビープ音時を基準に、一つ前の数字提示からtap_interval経過していたら、次の数字提示に切り替える
-                            cla;
                             % a = GetSecs;
-                            text(0.5, 0.5, num2str(keys), 'Color', 'y', 'FontSize', 100, 'HorizontalAlignment', 'center'); % 黄色の数字を表示
-                            drawnow
+                            txt.String = num2str(keys);
+                            drawnow;
                             % b = a - (obj.first_beep_time + count8*obj.tap_interval);
                             % fprintf("差＝%d \n", b); % 最大で0.0012秒の遅れ
                             count8 = count8 + 1;
