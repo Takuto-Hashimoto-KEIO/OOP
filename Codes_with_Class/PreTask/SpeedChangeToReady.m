@@ -25,6 +25,7 @@ classdef SpeedChangeToReady
             pause(1);
 
             [pause_rest_time, obj] = speedChangeNotifier(obj);
+            
             obj.restNotifier(pause_rest_time, txt);
 
             % sendCommand(daq,3); % Ready
