@@ -14,7 +14,7 @@ classdef TrialMaster
         tap_interval
         Results
 
-        screening1_terminater
+        screening_terminater
     end
 
     methods
@@ -79,13 +79,28 @@ classdef TrialMaster
                     obj.speed_changer, obj.consecutive_same_speeds, obj.interval_index, cfg.num_reference_trials, cfg.speed_changer_activate_points);
 
             % Speed adjustment blockのみで2trialごとに、blockの終了判定と速度増加を実施（Screeening1のみ）
-            elseif cfg.block_type == 'S'
+            elseif cfg.block_type == 'S1'
                 if mod(obj.current_trial, 2) == 0  % 偶数trialの終了時
-                    S_A_task_judger = TaskJudgerPer2Trials(obj.current_trial, obj.interval_index, task_ev.Results.success_duration);
-                    [S_A_task_judger, obj.screening1_terminater] = S_A_task_judger.run_task_judger_per_2trials(obj.txt);
-                    next_interval_index = S_A_task_judger.interval_index; % 次のtrialの打鍵速度の番号を設定
+                    S1_task_judger = TaskJudgerPer2Trials(obj.current_trial, obj.interval_index, task_ev.Results.success_duration);
+                    [S1_task_judger, obj.screening_terminater] = S1_task_judger.run_task_judger_per_2trials(obj.txt);
+                    next_interval_index = S1_task_judger.interval_index; % 次のtrialの打鍵速度の番号を設定
                 else % 奇数trialの終了時
                     fprintf('このtrialの打鍵成功持続時間 = %d\n', task_ev.Results.success_duration(obj.current_trial));
+                    next_interval_index = current_interval_index; % 次trialは打鍵速度を維持
+                end
+
+            elseif cfg.block_type == 'S2'
+                fprintf('このtrialの打鍵成功持続時間 = %d\n', task_ev.Results.success_duration(obj.current_trial));
+                if obj.current_trial == cfg.NumTrials  % 9trialの終了時
+                    % 終了操作
+                    S2_task_judger = TaskJudgerPer3Trials(obj.current_trial, obj.interval_index, task_ev.Results.success_duration, cfg.TapIntervalList);
+                    [obj.screening_terminater, S2_results] = S2_task_judger.run_task_judger_per_3trials(obj.txt);
+                    next_interval_index = 0; % next_interval_indexを空置き
+                    obj.Results.S2_results = S2_results;
+
+                elseif mod(obj.current_trial, 3) == 0  % 3の倍数のtrialの終了時
+                    next_interval_index = current_interval_index + 1; % 次のtrialの打鍵速度の番号を設定
+                else % 3の倍数でないtrialの終了時
                     next_interval_index = current_interval_index; % 次trialは打鍵速度を維持
                 end
             end

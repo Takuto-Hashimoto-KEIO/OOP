@@ -11,7 +11,7 @@ addpath("C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Ha
 Startup_SA;
 
 % 設定を作成（beepパターンの作成も内包）
-settings = ParameterSettings('Self', '1', 'S', 1);
+settings = ParameterSettings('Self5', '1', 'S1', 5);
 % ()内は被験者番号、block番号、blockの種類｛S, P, M｝（= 速度調節、練習、Mainのblockに対応）、開始時の速度レベル(interval_index)
 
 % 被験者への提示画面の準備
@@ -59,6 +59,7 @@ Results = ResultsKeeper(trial);
 Results = Results.run_results_keeper(settings.judge_range_parameters);
 
 % [検証用]
+cla;
 text(0.5, 0.5, 'Executed to the end', 'Color', 'w', 'FontSize', 100, 'HorizontalAlignment', 'center');
 pause(3); % 3秒間待機
 close all
@@ -66,7 +67,9 @@ close all
 
 function block_start_notifier(block_type)
 switch block_type
-    case 'S'
+    case 'S1'
+        block_name = 'Speed Adjustment Block';
+    case 'S1'
         block_name = 'Speed Adjustment Block';
     case 'P'
         block_name = 'Practice Block';

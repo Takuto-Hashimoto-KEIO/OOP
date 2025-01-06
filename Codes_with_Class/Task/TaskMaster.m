@@ -112,18 +112,27 @@ classdef TaskMaster
         % リアルタイム打鍵成功判定(とコマンドウィンドウへの表示)
         function obj = keystroke_realtime_judger(obj, pressed_keys)
 
-            % 誤ったキーが押されているかチェック
-            key_mapping_index_array = 1:length(obj.key_mapping);
-            wrong_keys = setdiff(key_mapping_index_array, obj.num_keys); % 誤ったキー番号を取得
-            wrongKey_pressed = any(ismember(pressed_keys, wrong_keys)); % 誤ったキーが押されたか確認
+            % Miss判定を削除（1/6 岩間先生の指示）
+            % % 誤ったキーが押されているかチェック
+            % key_mapping_index_array = 1:length(obj.key_mapping);
+            % wrong_keys = setdiff(key_mapping_index_array, obj.num_keys); % 誤ったキー番号を取得
+            % wrongKey_pressed = any(ismember(pressed_keys, wrong_keys)); % 誤ったキーが押されたか確認
+            % 
+            % if wrongKey_pressed % 誤った打鍵があったとき
+            %     if obj.miss_ditected == 0
+            %         fprintf('Miss');
+            %         obj.miss_ditected = 1;
+            %     end
+            % 
+            % elseif all(pressed_keys == obj.num_keys) && isscalar(pressed_keys) % 正しい打鍵だけをしたとき（ビープ音提示の前後tap_interval÷2秒間で打鍵成功）
+            %     if obj.success_ditected == 0
+            %         fprintf('Success');
+            %         obj.success_ditected = 1;
+            %     end
+            % end
 
-            if wrongKey_pressed % 誤った打鍵があったとき
-                if obj.miss_ditected == 0
-                    fprintf('Miss');
-                    obj.miss_ditected = 1;
-                end
-
-            elseif all(pressed_keys == obj.num_keys) && isscalar(pressed_keys) % 正しい打鍵だけをしたとき（ビープ音提示の前後tap_interval÷2秒間で打鍵成功）
+            % Miss判定を削除し、新たにSuccess判定だけ実装（1/6 岩間先生の指示）
+            if any(pressed_keys == obj.num_keys) && isscalar(pressed_keys) % 正しい打鍵をしたとき（ビープ音提示の前後tap_interval÷2秒間で打鍵成功）
                 if obj.success_ditected == 0
                     fprintf('Success');
                     obj.success_ditected = 1;

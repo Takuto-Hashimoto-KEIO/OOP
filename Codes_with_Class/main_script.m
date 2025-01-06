@@ -1,5 +1,4 @@
 clear
-
 close all
 
 KbName('UnifyKeyNames');
@@ -11,7 +10,7 @@ addpath("C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Ha
 Startup_SA;
 
 % 設定を作成（beepパターンの作成も内包）
-settings = ParameterSettings('Self4', '1', 'S', 5);
+settings = ParameterSettings('Self7', '1', 'S1', 5);
 % ()内は被験者番号、block番号、blockの種類｛S, P, M｝（= 速度調節、練習、Mainのblockに対応）、開始時の速度レベル(interval_index)
 
 % 被験者への提示画面の準備
@@ -42,8 +41,8 @@ for current_trial = 1:settings.NumTrials
     [trial, next_interval_index] = trial.run_trial(current_trial, next_interval_index);
 
     % 速度調節Screening1のみでの終了処理
-    if settings.block_type == 'S'
-        if trial.screening1_terminater == 1
+    if ismember(settings.block_type, ["S1", "S2"])
+        if trial.screening_terminater == 1
             break;
         end
     end
@@ -67,8 +66,10 @@ close all
 
 function block_start_notifier(block_type)
 switch block_type
-    case 'S'
-        block_name = 'Speed Adjustment Block';
+    case 'S1'
+        block_name = 'S1 Block';
+    case 'S2'
+        block_name = 'S2 Block';
     case 'P'
         block_name = 'Practice Block';
     case 'M'

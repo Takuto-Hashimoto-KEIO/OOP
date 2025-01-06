@@ -89,6 +89,10 @@ classdef ResultsKeeper
                 'num_last_trial', obj.current_trial ...
                 );
 
+            if block_type == 'S2'
+                block.S2_results = obj.trial.Results.S2_results;
+            end
+
             % 保存先のフォルダの作成
             save_path = obj.create_save_folder(block_type, num_block, num_participant);
 

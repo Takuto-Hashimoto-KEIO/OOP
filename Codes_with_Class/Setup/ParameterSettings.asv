@@ -16,31 +16,6 @@ classdef ParameterSettings
         tolerance_percentage_2 % 通常の打鍵成功許容範囲の割合
         judge_range_parameters % 上記3つのパラメータをまとめてこの構造体に格納
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-
         % 速度変更に関するパラメータ
         num_reference_trials
         speed_changer_activate_points
@@ -68,7 +43,13 @@ classdef ParameterSettings
             % 1人の実験全体で不変の条件
             obj.KeyMapping = [KbName('J'), KbName('E'), KbName('I'), KbName('F')]; %　各キーに対応するキースキャンコード（keyCode：番号）を保存
             obj.TapIntervalList = [1/2, 1/2.3, 1/2.6, 1/2.9, 1/3.2, 1/3.5, 1/3.9, 1/4.3, 1/4.7, 1/5.2, 1/5.7];
-            obj.NumTrials = 20;
+            if block_type == 'P'
+                obj.NumTrials = 5;
+            elseif block_type == 'S2'
+                obj.NumTrials = 9;
+            else
+                obj.NumTrials = 20;
+            end
             obj.NumLoops = 30;
             obj.NumKeys = 4;
             obj.TrialTaskTime = 20; % 1trialのtask実行時間
@@ -105,7 +86,9 @@ classdef ParameterSettings
                 );
             window_delimiters = struct( ...
                 'acception_window_start', NaN(obj.NumTrials, obj.NumLoops, obj.NumKeys), ...
-                'acception_window_end', NaN(obj.NumTrials, obj.NumLoops, obj.NumKeys) ...
+                'acception_window_end', NaN(obj.NumTrials, obj.NumLoops, obj.NumKeys), ...
+                'rejection_window_start', NaN(obj.NumTrials, obj.NumLoops, obj.NumKeys), ...
+                'rejection_window_end', NaN(obj.NumTrials, obj.NumLoops, obj.NumKeys) ...
                 );
             obj.Results = struct( ...
                 'tap_interval_list', obj.TapIntervalList, ...
@@ -121,6 +104,8 @@ classdef ParameterSettings
                 'judge', NaN(obj.NumTrials, obj.NumLoops * obj.NumKeys), ...
                 'success_duration', NaN(obj.NumTrials, 1) ...
                 );
+
+            S2_results
 
             %% National Insruments Data Acquisition (by S.Iwama.)[要改良]
             % DevID = 'Dev2'; % Please check

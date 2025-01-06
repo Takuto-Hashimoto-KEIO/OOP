@@ -45,6 +45,8 @@ classdef ParameterSettings
             obj.TapIntervalList = [1/2, 1/2.3, 1/2.6, 1/2.9, 1/3.2, 1/3.5, 1/3.9, 1/4.3, 1/4.7, 1/5.2, 1/5.7];
             if block_type == 'P'
                 obj.NumTrials = 5;
+            elseif block_type == 'S2'
+                obj.NumTrials = 9;
             else
                 obj.NumTrials = 20;
             end
@@ -102,7 +104,7 @@ classdef ParameterSettings
                 'judge', NaN(obj.NumTrials, obj.NumLoops * obj.NumKeys), ...
                 'success_duration', NaN(obj.NumTrials, 1) ...
                 );
-
+            
             %% National Insruments Data Acquisition (by S.Iwama.)[要改良]
             % DevID = 'Dev2'; % Please check
             % daq = DAQclass(DevID);

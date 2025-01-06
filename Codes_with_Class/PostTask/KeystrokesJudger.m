@@ -115,7 +115,7 @@ classdef KeystrokesJudger
             % beep_times = beep_times - beep_times(1); % [検証用]
 
             % 新しい配列 (要素数は、ループ数 × 4) の作成、start_beep_time + 8 * tap_intervalを始点とし、tap_intervalごとにtrial_task_timeを超えるまで加算
-            beep_times_keys = NaN(floor(num_beeps/4)+1, 4); % 新しい配列、keyごとに次元を分ける
+            beep_times_keys = NaN(floor(num_beeps/4)+1, 4'); % 新しい配列、keyごとに次元を分ける
 
             for mod_index = 0:3 % mod(インデックス, 4) の結果に基づく次元分け
                 % 該当インデックスの抽出
@@ -158,17 +158,17 @@ classdef KeystrokesJudger
                         correct_key_pressed(4*(loop - 1) + key, 1) = key;
                     end
 
-                    % 押すべきでないキーが誤って押されていないか確認
-                    for other_key = setdiff(1:4, key) % key以外のキーをチェック
-                        if any(pressed_times(current_trial, other_key, :) >= W_D.rejection_window_start(loop, key) & pressed_times(current_trial, other_key, :) <= W_D.rejection_window_end(loop, key))
-                            incorrect_key_pressed(4*(loop - 1) + key, 1) = other_key;
-                            break;
-                        end
-                    end
+                    % % 押すべきでないキーが誤って押されていないか確認
+                    % for other_key = setdiff(1:4, key) % key以外のキーをチェック
+                    %     if any(pressed_times(current_trial, other_key, :) >= W_D.rejection_window_start(loop, key) & pressed_times(current_trial, other_key, :) <= W_D.rejection_window_end(loop, key))
+                    %         incorrect_key_pressed(4*(loop - 1) + key, 1) = other_key;
+                    %         break;
+                    %     end
+                    % end
 
                     if task_based_required_keystrokes >= 4*(loop - 1) + key % task実行時に到達していないかった打鍵判定区間の対応打鍵は、判定しない→NaNが格納されたままになる
                         % 該当キーが押され、誤ったキーが押されていない場合にのみ、judgeに1を格納。そうでなければ0を格納
-                        if correct_key_pressed(4*(loop - 1) + key, 1) == key && incorrect_key_pressed(4*(loop - 1) + key, 1) == 0
+                        if correct_key_pressed(4*(loop - 1) + key, 1) == key % && incorrect_key_pressed(4*(loop - 1) + key, 1) == 0 1/6に岩間先生の指示で消去
                             judge(4*(loop - 1) + key, 1) = 1;
                         else
                             judge(4*(loop - 1) + key, 1) = 0;
