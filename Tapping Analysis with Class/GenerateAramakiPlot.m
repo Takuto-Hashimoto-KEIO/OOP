@@ -8,6 +8,7 @@ classdef GenerateAramakiPlot
 
         num_trials
         num_keys
+        tap_intervals
 
         beep_times_keys
         keystrokes
@@ -54,10 +55,15 @@ classdef GenerateAramakiPlot
             obj.judge = block.judge;
             
             % trial数を取得
-            obj.num_trials = size(obj.judge, 1);
+            % obj.num_trials = 2; % 一時的に使用
+            obj.num_trials = block.num_last_trial; % 本来はこれを使用
+
 
             % キーの種類数を取得
             obj.num_keys = size(obj.beep_times_keys, 3);
+            
+            % 打鍵間隔の推移を取得
+            obj.tap_intervals = block.tap_intervals;
         end
 
         % 各trialのプロットを生成
@@ -173,7 +179,8 @@ classdef GenerateAramakiPlot
                 yticklabels({'NUM', 'F', 'I', 'E', 'J'}); % NUMを含めたラベル
                 xlabel('Time (sec)');
                 ylabel('Keys');
-                title(['Subject ' obj.participant_name ' block ' obj.num_block ' trial ' num2str(trial_idx)]);
+                title(['Subject ' obj.participant_name ', block ' obj.num_block ', trial ' num2str(trial_idx) ', ' ...
+                    num2str(1/obj.tap_intervals(trial_idx)) ' Hz']);
 
                 % 塗りつぶし部分を凡例に含めないための調整
                 legend('Location', 'best');
