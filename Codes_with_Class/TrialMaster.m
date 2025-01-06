@@ -32,10 +32,11 @@ classdef TrialMaster
         end
 
         % trialの開始～終了までを一貫して実行
-        function obj = run_trial(obj, current_trial)
+        function [obj, next_interval_index] = run_trial(obj, current_trial, current_interval_index)
 
             cfg = obj.settings; % 文字数削減のため、置換。主に% run_trial内で不変の値を呼び出す際に使用
 
+            obj.interval_index = current_interval_index; % 打鍵速度の番号を更新
             obj.tap_interval = cfg.TapIntervalList(obj.interval_index); % 打鍵間隔を更新
 
             % 現在のtrial数を更新
@@ -74,16 +75,21 @@ classdef TrialMaster
             % Main blockのみで実施
             if cfg.block_type == 'M'
                 % 速度変更有無の判定と適用を行う（Main blockだけで実行するため、関数run_post_taskには含めない）
-                [obj.speed_changer, obj.consecutive_same_speeds, obj.interval_index] = task_ev.speed_regulator( ...
+                [obj.speed_changer, obj.consecutive_same_speeds, next_interval_index] = task_ev.speed_regulator( ...
                     obj.speed_changer, obj.consecutive_same_speeds, obj.interval_index, cfg.num_reference_trials, cfg.speed_changer_activate_points);
 
-                % Speed adjustment blockのみで2trialごとに、blockの終了判定と速度増加を実施（Screeening1のみ）
-            elseif cfg.block_type == 'S' && mod(obj.current_trial, 2) == 0
-                S_A_task_judger = TaskJudgerPer2Trials(obj.current_trial, obj.interval_index, task_ev.Results.success_duration);
-                obj.screening1_terminater = S_A_task_judger.run_task_judger_per_2trials(obj.txt);
+            % Speed adjustment blockのみで2trialごとに、blockの終了判定と速度増加を実施（Screeening1のみ）
+            elseif cfg.block_type == 'S'
+                if mod(obj.current_trial, 2) == 0  % 偶数trialの終了時
+                    S_A_task_judger = TaskJudgerPer2Trials(obj.current_trial, obj.interval_index, task_ev.Results.success_duration);
+                    [S_A_task_judger, obj.screening1_terminater] = S_A_task_judger.run_task_judger_per_2trials(obj.txt);
+                    next_interval_index = S_A_task_judger.interval_index; % 次のtrialの打鍵速度の番号を設定
+                else % 奇数trialの終了時
+                    fprintf('このtrialの打鍵成功持続時間 = %d\n', task_ev.Results.success_duration(obj.current_trial));
+                    next_interval_index = current_interval_index; % 次trialは打鍵速度を維持
+                end
             end
 
-            % 再生終了操作 [検証用]
             % clear sound % [検証用]
             % cla; % [検証用]
 
@@ -96,6 +102,8 @@ classdef TrialMaster
             obj.Results.keystrokes.num_keystroke_sections(obj.current_trial) = task.keystrokes.num_keystroke_sections;
             obj.Results.window_delimiters.acception_window_start = task_ev.window_delimiters.acception_window_start;
             obj.Results.window_delimiters.acception_window_end = task_ev.window_delimiters.acception_window_end;
+            obj.Results.window_delimiters.rejection_window_start = task_ev.window_delimiters.rejection_window_start;
+            obj.Results.window_delimiters.rejection_window_end = task_ev.window_delimiters.rejection_window_end;
             obj.Results.judge = task_ev.Results.judge;
             obj.Results.success_duration = task_ev.Results.success_duration;
         end

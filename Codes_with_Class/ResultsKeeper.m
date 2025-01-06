@@ -6,7 +6,7 @@ classdef ResultsKeeper
         trial
         judge
         success_duration
-        num_trials
+        current_trial
 
         % 保存したすべての値
         saved_results
@@ -18,7 +18,7 @@ classdef ResultsKeeper
             obj.trial = trial; % 引数のオブジェクトを一括して格納
             obj.judge = trial.Results.judge;
             obj.success_duration = trial.Results.success_duration;
-            obj.num_trials = trial.settings.NumTrials;
+            obj.current_trial = trial.current_trial;
         end
 
         % ResultsKeeper全体を一括して実行
@@ -35,7 +35,7 @@ classdef ResultsKeeper
             sum_success_keystrokes = sum(obj.judge == 1, "all"); % 全trialの成功打鍵の合計数
             num_required_keystrokes = sum(obj.judge == 0 | obj.judge == 1, "all"); % 全trialでの打鍵すべき回数の合計
             overall_sucesss_rate = sum_success_keystrokes/num_required_keystrokes; % block全体での打鍵成功率：成功打鍵数を打鍵すべき回数で割る
-            overall_mean_success_duration = mean(obj.success_duration(1:obj.num_trials)); % block全体での打鍵成功持続時間の平均
+            overall_mean_success_duration = mean(obj.success_duration(1:obj.current_trial)); % block全体での打鍵成功持続時間の平均
 
             % 完遂trialについて算出
             is_1_or_NaN = all(isnan(obj.judge) | obj.judge == 1, 2); % 全要素が1またはNaN
@@ -73,6 +73,7 @@ classdef ResultsKeeper
             % 保存用のデータを取得
             num_participant = obj.trial.settings.ParticipantNumber;
             num_block = obj.trial.settings.BlockNumber;
+            block_type = obj.trial.settings.block_type;
 
             % 保存用の構造体を作成
             block = struct( ...
@@ -84,11 +85,12 @@ classdef ResultsKeeper
                 'keystrokes', obj.trial.Results.keystrokes, ...
                 'window_delimiters', obj.trial.Results.window_delimiters, ...
                 'judge', obj.judge, ...
-                'success_duration', obj.success_duration ...
+                'success_duration', obj.success_duration, ...
+                'num_last_trial', obj.current_trial ...
                 );
 
             % 保存先のフォルダの作成
-            save_path = obj.create_save_folder(num_block, num_participant);
+            save_path = obj.create_save_folder(block_type, num_block, num_participant);
 
             % .matファイルでの保存の実行
             save( ...
@@ -113,7 +115,7 @@ classdef ResultsKeeper
 
     methods (Static, Access = private)
         % 保存先のフォルダの作成
-        function save_path = create_save_folder(num_block, num_participant)
+        function save_path = create_save_folder(block_type, num_block, num_participant)
             % "Results"フォルダの作成
             results_folder = fullfile(pwd, 'Results'); % 現在のフォルダに"Results"を作成
             if ~exist(results_folder, 'dir')
@@ -129,7 +131,8 @@ classdef ResultsKeeper
 
             % 保存先のファイル名とパスを作成
             block_date = datetime('now', 'Format', 'yyyyMMdd_HHmmss');
-            block_filename = sprintf('Block_Result_%s_block%s_%s.mat', num_participant, num_block, block_date);
+            block_filename = sprintf('Block_Result_%s_%s_block%s_%s.mat', ...
+                num_participant, block_type, num_block, block_date);
             save_path = fullfile(participant_folder, block_filename);
         end
     end

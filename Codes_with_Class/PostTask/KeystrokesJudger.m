@@ -34,13 +34,16 @@ classdef KeystrokesJudger
             % beep音の鳴った時刻の配列データ（キー別）を作成
             obj.beep_times_keys = obj.make_beep_times_keys(obj.beep_start_time, obj.tap_interval, obj.trial_task_time);
 
+            % obj.beep_times_keys = obj.beep_times_keys - obj.beep_times_keys(1,1); % [検証用]　この時点で既に値がおかしい
+
             % 打鍵判定の時間窓（打鍵判定区間）の配列の作成
             [obj.window_delimiters, beep_based_required_keystrokes] = obj.make_judge_range();
 
             task_based_required_keystrokes = all_data.keystrokes;
 
             % このtrialの打鍵判定を実行
-            judge_this_trial = obj.judge_keystrokes(all_data.Results.pressed_times, obj.current_trial, beep_based_required_keystrokes, obj.window_delimiters, task_based_required_keystrokes);
+            judge_this_trial = obj.judge_keystrokes(all_data.Results.pressed_times, obj.current_trial, ...
+                beep_based_required_keystrokes, obj.window_delimiters, task_based_required_keystrokes);
         end
     end
 
@@ -109,8 +112,10 @@ classdef KeystrokesJudger
             num_beeps = numel(current_time); % ビープ音が鳴った（本来鳴っているはずの）数
             beep_times(1:num_beeps) = current_time; % ビープ音の提示時刻を示す配列に格納
 
+            % beep_times = beep_times - beep_times(1); % [検証用]
+
             % 新しい配列 (要素数は、ループ数 × 4) の作成、start_beep_time + 8 * tap_intervalを始点とし、tap_intervalごとにtrial_task_timeを超えるまで加算
-            beep_times_keys = NaN(floor(num_beeps/4)+1, 4, 'single'); % 新しい配列、keyごとに次元を分ける
+            beep_times_keys = NaN(floor(num_beeps/4)+1, 4); % 新しい配列、keyごとに次元を分ける
 
             for mod_index = 0:3 % mod(インデックス, 4) の結果に基づく次元分け
                 % 該当インデックスの抽出

@@ -19,9 +19,12 @@ classdef TaskJudgerPer2Trials
         end
 
         % TaskJudgerPer2Trialの全体を一貫して実行
-        function obj = run_task_judger_per_2trials(obj, txt)
+        function screening1_terminater = run_task_judger_per_2trials(obj, txt)
             fprintf("\n速度レベル適合判定\n")
-            if obj.interval_index ~= 1 && block.success_duration(num_trials-1) <= 15 && block.success_duration(num_trials) <= 15 % 2trial両方で15秒以内に打鍵失敗した場合、速度調節Screening1を一旦終了
+
+            screening1_terminater = 0; % Screening1の終了判定。0で続行。1で終了
+
+            if obj.interval_index ~= 1 && obj.last_two_success_duration(1) <= 15 && obj.last_two_success_duration(2) <= 15 % 2trial両方で15秒以内に打鍵失敗した場合、速度調節Screening1を一旦終了
                 fprintf("Dropped out!\n")
                 fprintf('直近2trialの打鍵成功持続時間 = %d, %d\n', block.success_duration(num_trials-1:num_trials));
                 txt.String('Screening 1 Completed')
@@ -29,33 +32,22 @@ classdef TaskJudgerPer2Trials
                 pause(2);
                 fprintf("tap_interval = %d\n", tap_interval)
                 fprintf("interval_index = %d\n", obj.interval_index)
-                Screening1_terminater = 1;
+                screening1_terminater = 1;
 
-            elseif obj.interval_index == 1 && block.success_duration(num_trials - 1) <= 15 && block.success_duration(num_trials) <= 15 % 初めの速度レベルで躓いたらやり直し
+            elseif obj.interval_index == 1 && obj.last_two_success_duration(1) <= 15 && obj.last_two_success_duration(2) <= 15 % 初めの速度レベルで躓いたらやり直し
                 fprintf("Try Again!\n")
-                txt.String('Try Again!')
+                txt.String = 'Try Again!';
                 drawnow;
                 pause(1);
-                repeat_count = repeat_count + 2;
 
             else
                 fprintf("Clear!\n")
-                txt.String('Speed Up')
+                txt.String='Speed Up')
                 drawnow;
                 pause(1);
                 obj.interval_index = obj.interval_index + 1; % 一つ上の速度レベルに移行
             end
             fprintf('直近2trialの打鍵成功持続時間 = %d, %d\n', obj.last_two_success_duration);
-        end
-    end
-
-    methods
-        function obj = task_judger(obj)
-
-        end
-
-        function obj = speed_increaser()
-            obj.interval_index = obj.interval_index + 1;
         end
     end
 end

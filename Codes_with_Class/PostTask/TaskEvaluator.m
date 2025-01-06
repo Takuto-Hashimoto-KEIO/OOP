@@ -102,6 +102,8 @@ classdef TaskEvaluator
             % このtrialで作成した打鍵判定の時間窓を、配列に格納
             obj.window_delimiters = judger.window_delimiters;
 
+            % judger.beep_times_keys = judger.beep_times_keys - judger.beep_times_keys(1,1); % [検証用] この時点で既に値がおかしい
+
             % このtrialで作成したビープ音の時系列データを、全trialのビープ音を網羅したobj.Results.beep_times_keys配列に格納
             obj.Results.beep_times_keys(obj.current_trial, 1:size(judger.beep_times_keys, 1), :) = judger.beep_times_keys;
 
