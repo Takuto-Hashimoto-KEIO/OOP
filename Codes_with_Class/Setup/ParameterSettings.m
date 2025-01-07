@@ -44,7 +44,7 @@ classdef ParameterSettings
             obj.KeyMapping = [KbName('J'), KbName('E'), KbName('I'), KbName('F')]; %　各キーに対応するキースキャンコード（keyCode：番号）を保存
             obj.TapIntervalList = [1/2, 1/2.3, 1/2.6, 1/2.9, 1/3.2, 1/3.5, 1/3.9, 1/4.3, 1/4.7, 1/5.2, 1/5.7];
             if block_type == 'P'
-                obj.NumTrials = 5;
+                obj.NumTrials = 25; % 最大のrrial数（5×5）
             elseif block_type == 'S2'
                 obj.NumTrials = 9;
             else

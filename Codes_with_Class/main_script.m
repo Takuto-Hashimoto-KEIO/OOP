@@ -10,7 +10,7 @@ addpath("C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Ha
 Startup_SA;
 
 % 設定を作成（beepパターンの作成も内包）
-settings = ParameterSettings('Self7', '1', 'S1', 5);
+settings = ParameterSettings('Self', '1', 'P', 5);
 % ()内は被験者番号、block番号、blockの種類｛S, P, M｝（= 速度調節、練習、Mainのblockに対応）、開始時の速度レベル(interval_index)
 
 % 被験者への提示画面の準備
@@ -40,14 +40,14 @@ for current_trial = 1:settings.NumTrials
     % trial開始～終了までを実行（1taskごとの打鍵判定処理を内包）
     [trial, next_interval_index] = trial.run_trial(current_trial, next_interval_index);
 
-    % 速度調節Screening1のみでの終了処理
-    if ismember(settings.block_type, ["S1", "S2"])
+    % Main blovck 以外での終了処理
+    if ismember(settings.block_type, ["S1", "S2", "P"])
         if trial.screening_terminater == 1
             break;
         end
     end
 
-    % trial.Resultsに保存する全trialのデータが集約される
+    % trial.Resultsに保存するほぼ全てのtrialのデータが集約される
 end
 % sendCommand(daq,7); % Block終了
 
@@ -61,8 +61,7 @@ Results = Results.run_results_keeper(settings.judge_range_parameters);
 cla;
 text(0.5, 0.5, 'Executed to the end', 'Color', 'w', 'FontSize', 100, 'HorizontalAlignment', 'center');
 pause(3); % 3秒間待機
-close all
-
+% close all
 
 function block_start_notifier(block_type)
 switch block_type
