@@ -28,7 +28,7 @@ classdef KeystrokesJudger
         end
 
         % 打鍵判定をする（judge_this_trial配列作成）までの全体
-        function [obj, judge_this_trial] = run_keystrokes_judger(obj)
+        function [obj, judge_this_trial] = run_keystrokes_judger(obj, block_type)
             all_data = obj.task_ev; % このクラスの入力であるオブジェクトtask_evの全体
 
             % beep音の鳴った時刻の配列データ（キー別）を作成
@@ -37,7 +37,7 @@ classdef KeystrokesJudger
             % obj.beep_times_keys = obj.beep_times_keys - obj.beep_times_keys(1,1); % [検証用]　この時点で既に値がおかしい
 
             % 打鍵判定の時間窓（打鍵判定区間）の配列の作成
-            [obj.window_delimiters, beep_based_required_keystrokes] = obj.make_judge_range();
+            [obj.window_delimiters, beep_based_required_keystrokes] = obj.make_judge_windows(block_type);
 
             task_based_required_keystrokes = all_data.keystrokes;
 
@@ -49,7 +49,7 @@ classdef KeystrokesJudger
 
     methods (Access = private)
      % 打鍵判定の時間窓（打鍵判定区間）の配列の作成
-        function [window_delimiters, required_keystrokes] = make_judge_range(obj)
+        function [window_delimiters, required_keystrokes] = make_judge_windows(obj, block_type)
 
             J_R_P = obj.judge_range_parameters; % 略称を設置
 
@@ -79,7 +79,7 @@ classdef KeystrokesJudger
                         rejection_percentage = 1 - tolerance_percentage; % 誤った打鍵の検出を行う範囲の割合
                     end
 
-                    beep_point = obj.beep_times_keys(loop, key); % この打鍵判定区間の中心時刻。ラグのあるblock.display_timesを使わず、beep_timeを基準に決定
+                    beep_point = obj.beep_times_keys(loop, key); % この打鍵判定区間の中心時刻。ラグのある数字提示時刻display_timesを使わず、beep_timeを基準に決定
                     acception_window_start(obj.current_trial, loop, key) = beep_point - obj.tap_interval * tolerance_percentage; % 成功判定時間窓の開始時刻 %%%
                     acception_window_end(obj.current_trial, loop, key) = beep_point + obj.tap_interval * tolerance_percentage;   % 成功判定時間窓の終了時刻 %%%
 
@@ -98,6 +98,13 @@ classdef KeystrokesJudger
                 'rejection_window_start', rejection_window_start, ...
                 'rejection_window_end', rejection_window_end ...
                 );
+
+            % 練習blockでかつループの最初のtrial(5の倍数+1)のとき
+            if block_type == 'P' && mod(obj.current_trial, 5) == 1 && obj.current_trial ~= 1
+                num_last_loop = (obj.current_trial - 1)/5; % 前回のループ番号
+                % 打鍵判定区間を、前回のループでの平均打鍵遅れに応じてシフト
+                window_delimiters = obj.window_shifter(window_delimiters, obj.task_ev.Results.P_window_shifters(num_last_loop));
+            end
         end
     end
 
@@ -144,7 +151,7 @@ classdef KeystrokesJudger
             % 配列の初期設定
             judge = NaN(4*(num_loops - 1) + num_keys, 1); % judge配列の初期化
             correct_key_pressed = zeros(beep_based_required_keystrokes, 1);
-            incorrect_key_pressed = zeros(beep_based_required_keystrokes, 1);
+            % incorrect_key_pressed = zeros(beep_based_required_keystrokes, 1); [1/6に岩間先生の指示で消去]
 
             % judge配列の生成
             for loop = 1:num_loops
@@ -158,7 +165,7 @@ classdef KeystrokesJudger
                         correct_key_pressed(4*(loop - 1) + key, 1) = key;
                     end
 
-                    % % 押すべきでないキーが誤って押されていないか確認
+                    % % 押すべきでないキーが誤って押されていないか確認 [1/6に岩間先生の指示で消去]
                     % for other_key = setdiff(1:4, key) % key以外のキーをチェック
                     %     if any(pressed_times(current_trial, other_key, :) >= W_D.rejection_window_start(loop, key) & pressed_times(current_trial, other_key, :) <= W_D.rejection_window_end(loop, key))
                     %         incorrect_key_pressed(4*(loop - 1) + key, 1) = other_key;
@@ -168,7 +175,7 @@ classdef KeystrokesJudger
 
                     if task_based_required_keystrokes >= 4*(loop - 1) + key % task実行時に到達していないかった打鍵判定区間の対応打鍵は、判定しない→NaNが格納されたままになる
                         % 該当キーが押され、誤ったキーが押されていない場合にのみ、judgeに1を格納。そうでなければ0を格納
-                        if correct_key_pressed(4*(loop - 1) + key, 1) == key % && incorrect_key_pressed(4*(loop - 1) + key, 1) == 0 1/6に岩間先生の指示で消去
+                        if correct_key_pressed(4*(loop - 1) + key, 1) == key % && incorrect_key_pressed(4*(loop - 1) + key, 1) == 0 [1/6に岩間先生の指示で消去]
                             judge(4*(loop - 1) + key, 1) = 1;
                         else
                             judge(4*(loop - 1) + key, 1) = 0;
@@ -177,6 +184,14 @@ classdef KeystrokesJudger
                     % fprintf("%d\n", 4*(loop - 1) + key) % [検証用]
                 end
             end
+        end
+
+        % 練習blockでのみ5trial置きに実施、被験者の打鍵遅れに応じた打鍵判定区間のシフト
+        function window_delimiters = window_shifter(window_delimiters, window_shifter)
+            window_delimiters.acception_window_start = window_delimiters.acception_window_start + window_shifter;
+            window_delimiters.acception_window_end = window_delimiters.acception_window_end + window_shifter;
+            window_delimiters.rejection_window_start = window_delimiters.rejection_window_start + window_shifter;
+            window_delimiters.rejection_window_end = window_delimiters.rejection_window_end + window_shifter;
         end
 
     end

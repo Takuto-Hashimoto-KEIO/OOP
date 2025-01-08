@@ -27,7 +27,7 @@ classdef TaskEvaluator
         end
 
         % run_post_task 直前のtaskの打鍵判定～打鍵成功持続時間の計算を一貫して実行
-        function obj = run_post_task(obj, txt)
+        function obj = run_post_task(obj, txt, block_type)
 
             % 「Blank」を画面提示
             txt.String = 'Blank';
@@ -35,10 +35,10 @@ classdef TaskEvaluator
             % sendCommand(daq,6); % Blank
             blank_start_time = GetSecs; % [検証用]
 
-            % 打鍵判定
-            obj = obj.run_keystrokes_judger();
+            % 打鍵判定と保存
+            obj = obj.judge_keystrokes(block_type);
 
-            % 打鍵成功持続時間の計算
+            % 打鍵成功持続時間の計算と保存
             obj = obj.calculate_success_duration();
 
             % 「Blank」の画面提示の終了
@@ -86,23 +86,17 @@ classdef TaskEvaluator
                 consecutive_same_speeds = 1;
             end
         end
-
-        % % 被験者の打鍵データから、打鍵判定区間の調整（速度調節block、練習blockのときだけ実行）
-        % function obj =
-        % end
     end
 
     methods (Access = private)
         % 打鍵判定の時間窓の決定～打鍵判定（judge配列への格納）、クラスKeystrokesJudgerを起動
-        function obj = run_keystrokes_judger(obj)
+        function obj = judge_keystrokes(obj, block_type)
 
             judger = KeystrokesJudger(obj);
-            [judger, judge_this_trial] = judger.run_keystrokes_judger();
+            [judger, judge_this_trial] = judger.run_keystrokes_judger(block_type);
 
             % このtrialで作成した打鍵判定の時間窓を、配列に格納
             obj.window_delimiters = judger.window_delimiters;
-
-            % judger.beep_times_keys = judger.beep_times_keys - judger.beep_times_keys(1,1); % [検証用] この時点で既に値がおかしい
 
             % このtrialで作成したビープ音の時系列データを、全trialのビープ音を網羅したobj.Results.beep_times_keys配列に格納
             obj.Results.beep_times_keys(obj.current_trial, 1:size(judger.beep_times_keys, 1), :) = judger.beep_times_keys;

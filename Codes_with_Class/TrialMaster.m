@@ -29,6 +29,12 @@ classdef TrialMaster
             obj.consecutive_same_speeds = 1;
             obj.interval_index = settings.IntervalIndexAtStart;
             obj.Results = settings.Results;
+
+            % 練習blockでのみ実施
+            if settings.block_type == 'P'
+                obj.Results.P_mean_delays_per_5trials = NaN(settings.NumTrials/5, 1);
+                obj.Results.P_window_shifters = NaN(settings.NumTrials/5, 1);
+            end
         end
 
         % trialの開始～終了までを一貫して実行
@@ -70,7 +76,7 @@ classdef TrialMaster
             % 1task終了時にそのtaskの打鍵判定を行う
             task_ev = TaskEvaluator(obj.Results, obj.current_trial, obj.tap_interval, ...
                 cfg.judge_range_parameters, task.keystrokes, cfg.TrialTaskTime);
-            task_ev = task_ev.run_post_task(obj.txt);
+            task_ev = task_ev.run_post_task(obj.txt, cfg.block_type);
 
             % block_type別の分岐操作、次trialの打鍵速度変更などを行う
             [obj, next_interval_index] = obj.branching_by_block_type(task_ev, cfg);
@@ -111,7 +117,7 @@ classdef TrialMaster
                 case 'S2' % Speed adjustment blockのみで3trialごとに、速度増加を実施 & 9trial後に終了操作（Screeening2のみ）
                     fprintf('このtrialの打鍵成功持続時間 = %d\n', task_ev.Results.success_duration(obj.current_trial));
                     if obj.current_trial == cfg.NumTrials  % 9trialの終了時
-                        % 終了操作
+                        % blockの終了操作
                         S2_task_judger = TaskJudgerPer3Trials(obj.current_trial, obj.interval_index, task_ev.Results.success_duration, cfg.TapIntervalList);
                         [obj.screening_terminater, S2_results] = S2_task_judger.run_task_judger_per_3trials(obj.txt);
                         next_interval_index = 0; % next_interval_indexを空置き
@@ -126,10 +132,18 @@ classdef TrialMaster
                 case 'P' % Practice blockのみで実施
                     fprintf('このtrialの打鍵成功持続時間 = %d\n', task_ev.Results.success_duration(obj.current_trial));
                     if mod(obj.current_trial, 5) == 0  % 5の倍数のtrialの終了時
+                        % 次回のtrialの速度の決定およびblockの終了判定
                         P_task_judger = TaskJudgerPer5Trials(obj.current_trial, obj.interval_index, ...
                             task_ev.Results.success_duration, cfg.TapIntervalList, cfg.TrialTaskTime);
                         [obj.screening_terminater, next_interval_index, determined_interval_index] = P_task_judger.run_task_judger_per_5trials(obj.txt);
                         obj.Results.P_determined_interval_index = determined_interval_index;
+
+                        % 打鍵遅れの平均を算出し、次回trialからの打鍵判定区間のずらし幅を決定
+                        shifter = JudgeWindowShifter();
+                        num_loop = obj.current_trial/5; % 5trial刻みで現在何周目か
+                        [obj.Results.P_mean_delays_per_5trials(num_loop), obj.Results.P_window_shifters(num_loop)] = shifter.run_judge_window_shifter( ...
+                            task_ev.Results.judge, obj.Results.pressed_times, task_ev.Results.beep_times_keys, task_ev.window_delimiters);
+
                     else % 5の倍数でないtrialの終了時
                         next_interval_index = obj.interval_index; % 次trialは打鍵速度を維持
                     end
@@ -138,7 +152,6 @@ classdef TrialMaster
                     % 速度変更有無の判定と適用を行う（Main blockだけで実行するため、関数run_post_taskには含めない）
                     [obj.speed_changer, obj.consecutive_same_speeds, next_interval_index] = task_ev.speed_regulator( ...
                         obj.speed_changer, obj.consecutive_same_speeds, obj.interval_index, cfg.num_reference_trials, cfg.speed_changer_activate_points);
-
             end
         end
     end

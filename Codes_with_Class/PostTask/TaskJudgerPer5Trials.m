@@ -87,7 +87,7 @@ classdef TaskJudgerPer5Trials
                 elseif sum(last_5_success_durations >= obj.trial_task_time*0.9) >= 3 % 直近5trial中 3trial以上で打鍵成功持続時間が20秒間以上になったら終了
                     fprintf("打鍵成功持続時間が18秒以上のtrialが3つ以上です。\n");
 
-                    if sum(last_5_success_durations >= obj.trial_task_time*0.5) >= 4
+                    if sum(last_5_success_durations >= obj.trial_task_time*0.5) >= 4 && obj.current_trial ~= 5 % 1周目ではないことも条件に追加
                         fprintf("打鍵成功持続時間が10秒未満のtrialが1つ以下です。\n");
                         fprintf("\n練習blockのクリア条件達成。\n");
                         next_interval_index = 0; % 仮置き
@@ -98,6 +98,13 @@ classdef TaskJudgerPer5Trials
                         obj.txt.String = 'Practice Block Completed';
                         pause(2);
                         practice_terminater = 1; % practice_blockの終了
+
+                    elseif sum(last_5_success_durations >= obj.trial_task_time*0.5) >= 4
+                        next_interval_index = obj.interval_index; % 打鍵速度維持
+                        fprintf("打鍵成功持続時間が10秒未満のtrialが1つ以下です。\n");
+                        fprintf("\n練習blockのクリア条件達成。\n");
+                        fprintf("しかし、まだ1周目なので速度を変えずに再挑戦します。\n");
+                        obj.txt.String = 'Try Again!';
 
                     else
                         next_interval_index = obj.interval_index; % 打鍵速度維持

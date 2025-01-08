@@ -93,6 +93,8 @@ classdef ResultsKeeper
                 block.S2_results = obj.trial.Results.S2_results;
             elseif block_type == 'P'
                 block.P_determined_interval_index = obj.trial.Results.P_determined_interval_index;
+                block.P_mean_delays_per_5trials = obj.trial.Results.P_mean_delays_per_5trials;
+                block.P_window_shifters = obj.trial.Results.P_window_shifters;
             end
 
             % 保存先のフォルダの作成

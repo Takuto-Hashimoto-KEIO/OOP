@@ -27,7 +27,7 @@ classdef TaskEvaluator
         end
 
         % run_post_task 直前のtaskの打鍵判定～打鍵成功持続時間の計算を一貫して実行
-        function obj = run_post_task(obj, txt)
+        function obj = run_post_task(obj, txt, block_type)
 
             % 「Blank」を画面提示
             txt.String = 'Blank';
@@ -36,7 +36,7 @@ classdef TaskEvaluator
             blank_start_time = GetSecs; % [検証用]
 
             % 打鍵判定
-            obj = obj.run_keystrokes_judger();
+            obj = obj.run_keystrokes_judger(block_type);
 
             % 打鍵成功持続時間の計算
             obj = obj.calculate_success_duration();
@@ -87,7 +87,7 @@ classdef TaskEvaluator
             end
         end
 
-        % % 被験者の打鍵データから、打鍵判定区間の調整（速度調節block、練習blockのときだけ実行）
+        % % 被験者の打鍵データから、打鍵判定区間の調整（練習blockのときだけ実行）
         % function obj =
         % end
     end
@@ -101,8 +101,6 @@ classdef TaskEvaluator
 
             % このtrialで作成した打鍵判定の時間窓を、配列に格納
             obj.window_delimiters = judger.window_delimiters;
-
-            judger.beep_times_keys = judger.beep_times_keys - judger.beep_times_keys(1,1); % [検証用] この時点で既に値がおかしい
 
             % このtrialで作成したビープ音の時系列データを、全trialのビープ音を網羅したobj.Results.beep_times_keys配列に格納
             obj.Results.beep_times_keys(obj.current_trial, 1:size(judger.beep_times_keys, 1), :) = judger.beep_times_keys;
