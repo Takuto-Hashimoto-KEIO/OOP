@@ -29,12 +29,6 @@ classdef TrialMaster
             obj.consecutive_same_speeds = 1;
             obj.interval_index = settings.IntervalIndexAtStart;
             obj.Results = settings.Results;
-
-            % 練習blockでのみ実施
-            if settings.block_type == 'P'
-                obj.Results.P_mean_delays_per_5trials = NaN(settings.NumTrials/5, 1);
-                obj.Results.P_window_shifters = NaN(settings.NumTrials/5, 1);
-            end
         end
 
         % trialの開始～終了までを一貫して実行
@@ -78,9 +72,6 @@ classdef TrialMaster
                 cfg.judge_range_parameters, task.keystrokes, cfg.TrialTaskTime);
             task_ev = task_ev.run_post_task(obj.txt, cfg.block_type);
 
-            % block_type別の分岐操作、次trialの打鍵速度変更などを行う
-            [obj, next_interval_index] = obj.branching_by_block_type(task_ev, cfg);
-
             % clear sound % [検証用]
 
             % 出力する値を整理　　　%A% 二度手間では？　→ 仕方ない
@@ -90,12 +81,12 @@ classdef TrialMaster
             obj.Results.keystrokes.num_loops(obj.current_trial) = task.keystrokes.num_loops;
             obj.Results.keystrokes.num_keys(obj.current_trial) = task.keystrokes.num_keys;
             obj.Results.keystrokes.num_keystroke_sections(obj.current_trial) = task.keystrokes.num_keystroke_sections;
-            obj.Results.window_delimiters.acception_window_start = task_ev.window_delimiters.acception_window_start;
-            obj.Results.window_delimiters.acception_window_end = task_ev.window_delimiters.acception_window_end;
-            obj.Results.window_delimiters.rejection_window_start = task_ev.window_delimiters.rejection_window_start;
-            obj.Results.window_delimiters.rejection_window_end = task_ev.window_delimiters.rejection_window_end;
+            obj.Results.window_delimiters = task_ev.Results.window_delimiters;
             obj.Results.judge = task_ev.Results.judge;
             obj.Results.success_duration = task_ev.Results.success_duration;
+
+            % block_type別の分岐操作、次trialの打鍵速度変更などを行う
+            [obj, next_interval_index] = obj.branching_by_block_type(task_ev, cfg);
         end
     end
 
@@ -139,10 +130,10 @@ classdef TrialMaster
                         obj.Results.P_determined_interval_index = determined_interval_index;
 
                         % 打鍵遅れの平均を算出し、次回trialからの打鍵判定区間のずらし幅を決定
-                        shifter = JudgeWindowShifter();
-                        num_loop = obj.current_trial/5; % 5trial刻みで現在何周目か
-                        [obj.Results.P_mean_delays_per_5trials(num_loop), obj.Results.P_window_shifters(num_loop)] = shifter.run_judge_window_shifter( ...
-                            task_ev.Results.judge, obj.Results.pressed_times, task_ev.Results.beep_times_keys, task_ev.window_delimiters);
+                        shifter = JudgeWindowShiftRate();
+                        num_loop = obj.current_trial/5; % 5trial刻みで現在何周目終了時か
+                        [obj.Results.P_mean_delays_per_5trials(num_loop), obj.Results.window_delimiters.window_shift_rates(num_loop)] = shifter.run_judge_window_shift_rate( ...
+                            task_ev.Results.judge, obj.Results.pressed_times, task_ev.Results.beep_times_keys, task_ev.Results.window_delimiters, obj.current_trial, obj.tap_interval);
 
                     else % 5の倍数でないtrialの終了時
                         next_interval_index = obj.interval_index; % 次trialは打鍵速度を維持

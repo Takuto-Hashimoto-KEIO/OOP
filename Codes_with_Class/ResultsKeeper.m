@@ -94,7 +94,8 @@ classdef ResultsKeeper
             elseif block_type == 'P'
                 block.P_determined_interval_index = obj.trial.Results.P_determined_interval_index;
                 block.P_mean_delays_per_5trials = obj.trial.Results.P_mean_delays_per_5trials;
-                block.P_window_shifters = obj.trial.Results.P_window_shifters;
+                window_shift_rates = obj.trial.Results.window_delimiters.window_shift_rates;
+                block.mean_window_shift_rates = mean(window_shift_rates(~isnan(window_shift_rates)));
             end
 
             % 保存先のフォルダの作成

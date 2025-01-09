@@ -1,5 +1,5 @@
-classdef JudgeWindowShifter
-    %JUDGEWINDOWSHIFTER このクラスの概要をここに記述
+classdef JudgeWindowShifRate
+    %JUDGEWINDOWSHIFTRATE このクラスの概要をここに記述
     %   詳細説明をここに記述
     
     properties
@@ -8,6 +8,7 @@ classdef JudgeWindowShifter
         pressed_times
         beep_times_keys
         window_delimiters
+        current_trial
         tap_interval
 
         % 内製変数
@@ -16,13 +17,13 @@ classdef JudgeWindowShifter
     end
     
     methods
-        function obj = JudgeWindowShifter()
-            %JUDGEWINDOWSHIFTER このクラスのインスタンスを作成
+        function obj = JudgeWindowShifRate()
+            %JUDGEWINDOWSHIFTRATE このクラスのインスタンスを作成
         end
 
-        % JudgeWindowShifterの全機能を一貫して実行
-        function [mean_delays_per_5trials, window_shifter] = run_judge_window_shifter( ...
-                obj, judge, pressed_times, beep_times_keys, window_delimiters, tap_interval)
+        % JudgeWindowShifRateの全機能を一貫して実行
+        function [mean_delays_per_5trials, window_shift_rate] = run_judge_window_shift_rate( ...
+                obj, judge, pressed_times, beep_times_keys, window_delimiters, current_trial, tap_interval)
 
             fprintf('\n打鍵判定区間のシフト判定_P\n');
 
@@ -31,12 +32,13 @@ classdef JudgeWindowShifter
             obj.pressed_times = pressed_times;
             obj.beep_times_keys = beep_times_keys;
             obj.window_delimiters = window_delimiters;
+            obj.current_trial = current_trial;
             obj.tap_interval = tap_interval;
 
             obj.num_success_windows = NaN(5,1); % 各trialで成功打鍵数
 
             mean_delays_per_5trials = obj.calculate_mean_delays();
-            window_shifter = obj.judge_window_shifter(mean_delays_per_5trials);
+            window_shift_rate = obj.calculate_window_shift_rate(mean_delays_per_5trials);
         end
     end
 
@@ -44,20 +46,20 @@ classdef JudgeWindowShifter
         % 成功打鍵のbeep音に対する遅れについて、5trialの平均を算出
         function mean_delays_per_5trials = calculate_mean_delays(obj)
             % all_central_press_times = NaN(5,1); % 初期化
-            all_press_delays = NaN(5,1); % 初期化
+            all_press_delays = []; % 初期化
             
-            for current_trial = 1:5
-                [obj, central_press_times] = obj.calculate_central_press_times(current_trial);
-                % all_central_press_times(current_trial) = central_press_times;
+            for count_trial = 1:5
+                [obj, central_press_times] = obj.calculate_central_press_times(count_trial);
+                % all_central_press_times(count_trial) = central_press_times;
 
-                if obj.num_success_windows(current_trial) == 0
-                    fprintf('よって、%dtrial目の処理をスキップします\n', current_trial);
+                if obj.num_success_windows(count_trial) == 0
+                    fprintf('よって、%dtrial目の打鍵遅れ算出処理をスキップします\n', count_trial);
                     continue; % 現在の反復を終了して次の反復に移る
                 end
 
                 % 打鍵遅れの1trial平均を算出、trialごとに格納
-                press_delays = obj.calculate_press_delays(central_press_times, current_trial);
-                all_press_delays(current_trial) = press_delays;
+                press_delays = obj.calculate_press_delays(central_press_times, count_trial);
+                all_press_delays = press_delays;
             end
 
             % 5trialの平均を算出(press_delaysが全てNaNの場合、mean_delays_per_5trialsの値はNaNになる)
@@ -65,16 +67,16 @@ classdef JudgeWindowShifter
         end
 
         % 成功打鍵1つの押し下しの中央の時間を算出
-        function [obj, central_press_times] = calculate_central_press_times(obj, current_trial)
+        function [obj, central_press_times] = calculate_central_press_times(obj, count_trial)
             % 以下全てtrialごとに実行
 
             % 現在のtrialにおいて、成功した打鍵（judgeが1）のインデックスを取得
-            success_indices = find(obj.judge(current_trial, :) == 1);
-            obj.num_success_windows(current_trial) = length(success_indices);
-            sum_success = obj.num_success_windows(current_trial); % 長いし頻出なので短縮置換
+            success_indices = find(obj.judge(obj.current_trial, :) == 1);
+            obj.num_success_windows(count_trial) = length(success_indices);
+            sum_success = obj.num_success_windows(count_trial); % 長いし頻出なので短縮置換
 
             if isempty(success_indices) % このtrialでは成功打鍵が一つもない
-                fprintf('\nこの周のtrial%dでは成功打鍵が一つもありません！\n', current_trial);
+                fprintf('\nこの周のtrial%dでは成功打鍵が一つもありません！\n', count_trial);
                 central_press_times = NaN;
                 return; % 関数calculate_central_press_timesを強制終了
             end
@@ -108,11 +110,11 @@ classdef JudgeWindowShifter
                 % (key番号＆ループ数のペアから、beep_times_keysを参照してbeep時刻を算出)
 
                 % acception_window_startとacception_window_endから対応する時刻を取得
-                window_start(i) = obj.window_delimiters.acception_window_start(current_trial, loop, key);
-                window_end(i) = obj.window_delimiters.acception_window_end(current_trial, loop, key);
+                window_start(i) = obj.window_delimiters.acception_window_start(obj.current_trial, loop, key);
+                window_end(i) = obj.window_delimiters.acception_window_end(obj.current_trial, loop, key);
 
                 % window_startとwindow_endに挟まれたpressed_timesをvalid_timesに取得
-                time_data = obj.pressed_times(current_trial, key, :); % 特定のtrialとkeyの時系列データ
+                time_data = obj.pressed_times(obj.current_trial, key, :); % 特定のtrialとkeyの時系列データ
                 time_data = squeeze(time_data); % 3次元から1次元に変換
                 valid_times = time_data(time_data >= window_start(i) & time_data <= window_end(i)); % 範囲内の時刻を抽出
 
@@ -126,31 +128,30 @@ classdef JudgeWindowShifter
         end
 
         % 1trialでの全打鍵の平均打鍵遅れを算出
-        function mean_press_delays = calculate_press_delays(obj, central_press_times, current_trial)
+        function press_delays = calculate_press_delays(obj, central_press_times, count_trial)
             if ~ isnan(central_press_times)
-                press_delays = NaN(obj.num_success_windows(current_trial), 1); % 初期化
-                for i = 1:obj.num_success_windows(current_trial)
+                press_delays = NaN(obj.num_success_windows(count_trial), 1); % 初期化
+                for i = 1:obj.num_success_windows(count_trial)
                     loop = obj.success_keystrokes(i, 1); % ループ番号
                     key = obj.success_keystrokes(i, 2); % キー番号
 
                     % 1打鍵の中央値とbeep時刻との差分を計算
-                    press_delays(i) = central_press_times(i, 3) - obj.beep_times_keys(current_trial, loop, key);
+                    press_delays(i) = central_press_times(i, 3) - obj.beep_times_keys(count_trial, loop, key);
                 end
-
-                mean_press_delays = mean(press_delays);
             else
-                mean_press_delays = NaN;
+                press_delays = NaN;
             end
         end
 
         % 次trialでの打鍵判定区間のずらし幅を算出
-        function window_shift_rate = calucukata_window_shifter(obj, mean_delays_per_5trials)
+        function window_shift_rate = calculate_window_shift_rate(obj, mean_delays_per_5trials)
             if ~ isnan(mean_delays_per_5trials)
-                window_shifter = mean_delays_per_5trials/(obj.tap_interval/2); % [要検討]「打鍵区間の半分の長さ」に比した「平均打鍵遅れ」で算出
+                window_shift_rate = mean_delays_per_5trials/(obj.tap_interval/2); % [要検討]「打鍵区間の半分の長さ」に比した「平均打鍵遅れ」で算出
             else
-                window_shifter = 0;
+                window_shift_rate = 0;
                 fprintf('\nWarning!:直近5trialの全ての打鍵に失敗しています！\n')
             end
-            fprintf('\n次trial以降、打鍵判定区間を後ろに%dずらす\n', window_shifter);
+            fprintf('\n次trial以降、打鍵判定区間を後ろに%dの割合でずらす\n', window_shift_rate);
         end
     end
+end

@@ -4,7 +4,6 @@ classdef TaskEvaluator
 
     properties
         Results
-        window_delimiters
 
         current_trial
         tap_interval
@@ -92,11 +91,11 @@ classdef TaskEvaluator
         % 打鍵判定の時間窓の決定～打鍵判定（judge配列への格納）、クラスKeystrokesJudgerを起動
         function obj = judge_keystrokes(obj, block_type)
 
-            judger = KeystrokesJudger(obj);
-            [judger, judge_this_trial] = judger.run_keystrokes_judger(block_type);
+            judger = KeystrokesJudger(obj, block_type);
+            [judger, judge_this_trial] = judger.run_keystrokes_judger();
 
             % このtrialで作成した打鍵判定の時間窓を、配列に格納
-            obj.window_delimiters = judger.window_delimiters;
+            obj.Results.window_delimiters = judger.window_delimiters;
 
             % このtrialで作成したビープ音の時系列データを、全trialのビープ音を網羅したobj.Results.beep_times_keys配列に格納
             obj.Results.beep_times_keys(obj.current_trial, 1:size(judger.beep_times_keys, 1), :) = judger.beep_times_keys;

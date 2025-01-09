@@ -10,7 +10,7 @@ addpath("C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Ha
 Startup_SA;
 
 % 設定を作成（beepパターンの作成も内包）
-settings = ParameterSettings('Self3', '1', 'P', 6);
+settings = ParameterSettings('Self3', '1', 'P', 8);
 % ()内は被験者番号、block番号、blockの種類｛S, P, M｝（= 速度調節、練習、Mainのblockに対応）、開始時の速度レベル(interval_index)
 
 % 被験者への提示画面の準備

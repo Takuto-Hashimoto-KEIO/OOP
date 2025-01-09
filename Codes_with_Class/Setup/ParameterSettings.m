@@ -55,7 +55,7 @@ classdef ParameterSettings
             end
             obj.NumLoops = 30;
             obj.NumKeys = 4;
-            obj.TrialTaskTime = 20; % 1trialのtask実行時間
+            obj.TrialTaskTime = 4; % 1trialのtask実行時間
 
             % 打鍵成功判定区間のパラメータ
             obj.relaxation_percentage = 1; % 打鍵成功判定を大きく緩和する範囲の割合　task全体での要求打鍵数に対する割合で記述
@@ -93,6 +93,13 @@ classdef ParameterSettings
                 'rejection_window_start', NaN(obj.NumTrials, obj.NumLoops, obj.NumKeys), ...
                 'rejection_window_end', NaN(obj.NumTrials, obj.NumLoops, obj.NumKeys) ...
                 );
+            if block_type == 'P'
+                window_delimiters.window_shift_rates = NaN(obj.NumTrials/5, 1); % 練習trialのみ、打鍵判定区間のシフトレートを追加            
+            elseif block_type == 'M'
+                window_shift_rate = input('Input "mean_window_shift_rates" in practice block->');
+                window_delimiters.window_shift_rate = window_shift_rate;
+            end
+
             obj.Results = struct( ...
                 'tap_interval_list', obj.TapIntervalList, ...
                 'interval_index_recorder', NaN(obj.NumTrials, 1), ...
@@ -107,7 +114,11 @@ classdef ParameterSettings
                 'judge', NaN(obj.NumTrials, obj.NumLoops * obj.NumKeys), ...
                 'success_duration', NaN(obj.NumTrials, 1) ...
                 );
-            
+
+            if block_type == 'P'
+                obj.Results.P_mean_delays_per_5trials = NaN(obj.NumTrials/5, 1);
+            end
+
             %% National Insruments Data Acquisition (by S.Iwama.)[要改良]
             % DevID = 'Dev2'; % Please check
             % daq = DAQclass(DevID);

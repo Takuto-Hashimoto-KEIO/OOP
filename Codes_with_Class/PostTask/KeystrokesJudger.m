@@ -2,6 +2,7 @@ classdef KeystrokesJudger
 
     properties % 保存しておきたい変数を追加しておく[これがobj化する意味]
         task_ev
+        block_type
 
         current_trial
         tap_interval
@@ -17,7 +18,8 @@ classdef KeystrokesJudger
 
     methods (Access = public)
         % コンストラクタ：クラスからオブジェクトを作る
-        function obj = KeystrokesJudger(task_ev)
+        function obj = KeystrokesJudger(task_ev, block_type)
+            obj.block_type = block_type;
             obj.task_ev = task_ev;
 
             obj.current_trial = task_ev.current_trial;
@@ -28,7 +30,7 @@ classdef KeystrokesJudger
         end
 
         % 打鍵判定をする（judge_this_trial配列作成）までの全体
-        function [obj, judge_this_trial] = run_keystrokes_judger(obj, block_type)
+        function [obj, judge_this_trial] = run_keystrokes_judger(obj)
             all_data = obj.task_ev; % このクラスの入力であるオブジェクトtask_evの全体
 
             % beep音の鳴った時刻の配列データ（キー別）を作成
@@ -37,19 +39,19 @@ classdef KeystrokesJudger
             % obj.beep_times_keys = obj.beep_times_keys - obj.beep_times_keys(1,1); % [検証用]　この時点で既に値がおかしい
 
             % 打鍵判定の時間窓（打鍵判定区間）の配列の作成
-            [obj.window_delimiters, beep_based_required_keystrokes] = obj.make_judge_windows(block_type);
+            [obj.window_delimiters, beep_based_required_keystrokes] = obj.make_judge_windows();
 
             task_based_required_keystrokes = all_data.keystrokes;
 
             % このtrialの打鍵判定を実行
-            judge_this_trial = obj.judge_keystrokes(all_data.Results.pressed_times, obj.current_trial, ...
-                beep_based_required_keystrokes, obj.window_delimiters, task_based_required_keystrokes);
+            judge_this_trial = obj.judge_keystrokes(all_data.Results.pressed_times, ...
+                beep_based_required_keystrokes, task_based_required_keystrokes);
         end
     end
 
     methods (Access = private)
      % 打鍵判定の時間窓（打鍵判定区間）の配列の作成
-        function [window_delimiters, required_keystrokes] = make_judge_windows(obj, block_type)
+        function [window_delimiters, required_keystrokes] = make_judge_windows(obj)
 
             J_R_P = obj.judge_range_parameters; % 略称を設置
 
@@ -59,10 +61,7 @@ classdef KeystrokesJudger
             row_final = obj.beep_times_keys(num_loops, :); % beep_times_keysの最終行目(最後の打鍵ループ目)を取得
             final_key = sum(~isnan(row_final)); % 最後のbeepで打鍵したキーの番号を取得
 
-            acception_window_start = obj.task_ev.Results.window_delimiters.acception_window_start;
-            acception_window_end = obj.task_ev.Results.window_delimiters.acception_window_end;
-            rejection_window_start = NaN(num_loops, size(obj.beep_times_keys, 2));
-            rejection_window_end = NaN(num_loops, size(obj.beep_times_keys, 2));
+            window_delimiters = obj.task_ev.Results.window_delimiters;
 
             % 打鍵判定の時間窓配列の生成
             for loop = 1:num_loops
@@ -80,30 +79,89 @@ classdef KeystrokesJudger
                     end
 
                     beep_point = obj.beep_times_keys(loop, key); % この打鍵判定区間の中心時刻。ラグのある数字提示時刻display_timesを使わず、beep_timeを基準に決定
-                    acception_window_start(obj.current_trial, loop, key) = beep_point - obj.tap_interval * tolerance_percentage; % 成功判定時間窓の開始時刻 %%%
-                    acception_window_end(obj.current_trial, loop, key) = beep_point + obj.tap_interval * tolerance_percentage;   % 成功判定時間窓の終了時刻 %%%
+                    window_delimiters.acception_window_start(obj.current_trial, loop, key) = beep_point - obj.tap_interval * tolerance_percentage; % 成功判定時間窓の開始時刻 %%%
+                    window_delimiters.acception_window_end(obj.current_trial, loop, key) = beep_point + obj.tap_interval * tolerance_percentage;   % 成功判定時間窓の終了時刻 %%%
 
                     % correct_key_pressed = any(block.tap_times(num_trials, key, :) >= tap_window_start & block.tap_times(num_trials, key, :) <= tap_window_end);
 
                     % 他のキーが誤って押されていないか確認する時間窓
-                    rejection_window_start(loop, key) = beep_point - obj.tap_interval * rejection_percentage; % 失敗判定時間窓の開始時刻 %%%
-                    rejection_window_end(loop, key) = beep_point + obj.tap_interval * rejection_percentage;   % 失敗判定時間窓の終了時刻 %%%
+                    window_delimiters.rejection_window_start(loop, key) = beep_point - obj.tap_interval * rejection_percentage; % 失敗判定時間窓の開始時刻 %%%
+                    window_delimiters.rejection_window_end(loop, key) = beep_point + obj.tap_interval * rejection_percentage;   % 失敗判定時間窓の終了時刻 %%%
                 end
             end
+        end
 
-            % 出力を一つの構造体にまとめる
-            window_delimiters = struct( ...
-                'acception_window_start', acception_window_start, ...
-                'acception_window_end', acception_window_end, ...
-                'rejection_window_start', rejection_window_start, ...
-                'rejection_window_end', rejection_window_end ...
-                );
+        % このtrialの打鍵判定を実行
+        function judge = judge_keystrokes(obj, pressed_times, beep_based_required_keystrokes, task_based_required_keystrokes)
 
-            % 練習blockでかつループの最初のtrial(5の倍数+1)のとき
-            if block_type == 'P' && mod(obj.current_trial, 5) == 1 && obj.current_trial ~= 1
-                num_last_loop = (obj.current_trial - 1)/5; % 前回のループ番号
-                % 打鍵判定区間を、前回のループでの平均打鍵遅れに応じてシフト
-                window_delimiters = obj.window_shifter(window_delimiters, obj.task_ev.Results.P_window_shifters(num_last_loop));
+            W_D = obj.window_delimiters; % 略称を設置
+            acception_window_start = W_D.acception_window_start(obj.current_trial, :, :);
+            acception_window_end = W_D.acception_window_end(obj.current_trial, :, :);
+            rejection_window_start = W_D.rejection_window_start(obj.current_trial, :, :);
+            rejection_window_end = W_D.rejection_window_end(obj.current_trial, :, :);
+
+            % judgeの時だけ。window_shift_ratesに応じて打鍵判定区間をシフト
+            if obj.block_type == 'P' && obj.current_trial >= 6
+                num_last_loop  = ceil(obj.current_trial/ 5) - 1; % 前回のループ番号
+
+                % 前回のループで得たwindow_shift_rateに応じて打鍵判定区間をシフト
+                window_shift = W_D.window_shift_rates(num_last_loop)*(obj.tap_interval/2);
+                fprintf('\nこのtrialでは、打鍵判定区間を%d 秒だけ後ろにずらす\n', window_shift); % [検証用]
+                acception_window_start = acception_window_start + window_shift;
+                acception_window_end = acception_window_end + window_shift;
+                rejection_window_start = rejection_window_start + window_shift;
+                rejection_window_end = rejection_window_end + window_shift;
+
+            elseif obj.block_type == 'M'
+                % 一定のwindow_shift_rateで打鍵判定区間をシフト
+                window_shift = W_D.window_shift_rate*(obj.tap_interval/2);
+                acception_window_start = acception_window_start + window_shift;
+                acception_window_end = acception_window_end + window_shift;
+                rejection_window_start = rejection_window_start + window_shift;
+                rejection_window_end = rejection_window_end + window_shift;
+            end
+
+            num_loops = task_based_required_keystrokes.num_loops;
+            num_keys = task_based_required_keystrokes.num_keys;
+            task_based_required_keystrokes = task_based_required_keystrokes.num_keystroke_sections;
+
+            % 配列の初期設定
+            judge = NaN(4*(num_loops - 1) + num_keys, 1); % judge配列の初期化
+            correct_key_pressed = zeros(beep_based_required_keystrokes, 1);
+            % incorrect_key_pressed = zeros(beep_based_required_keystrokes, 1); [1/6に岩間先生の指示で消去]
+
+            % judge配列の生成
+            for loop = 1:num_loops
+                for key = 1:4
+                    if beep_based_required_keystrokes < 4*(loop - 1) + key
+                        break;
+                    end                    
+
+                    % 該当キーが押されているか確認
+                    if any(pressed_times(obj.current_trial, key, :) >= acception_window_start(1, loop, key) & ...
+                            pressed_times(obj.current_trial, key, :) <= acception_window_end(1, loop, key))
+                        correct_key_pressed(4*(loop - 1) + key, 1) = key;
+                    end
+
+                    % % 押すべきでないキーが誤って押されていないか確認 [1/6に岩間先生の指示で消去]
+                    % for other_key = setdiff(1:4, key) % key以外のキーをチェック
+                    %     if any(pressed_times(obj.current_trial, other_key, :) >= rejection_window_start(1, loop, key) & ...
+                    %             pressed_times(obj.current_trial, other_key, :) <= rejection_window_end(1, loop, key))
+                    %         incorrect_key_pressed(4*(loop - 1) + key, 1) = other_key;
+                    %         break;
+                    %     end
+                    % end
+
+                    if task_based_required_keystrokes >= 4*(loop - 1) + key % task実行時に到達していないかった打鍵判定区間の対応打鍵は、判定しない→NaNが格納されたままになる
+                        % 該当キーが押され、誤ったキーが押されていない場合にのみ、judgeに1を格納。そうでなければ0を格納
+                        if correct_key_pressed(4*(loop - 1) + key, 1) == key % && incorrect_key_pressed(4*(loop - 1) + key, 1) == 0 [1/6に岩間先生の指示で消去]
+                            judge(4*(loop - 1) + key, 1) = 1;
+                        else
+                            judge(4*(loop - 1) + key, 1) = 0;
+                        end
+                    end
+                    % fprintf("%d\n", 4*(loop - 1) + key) % [検証用]
+                end
             end
         end
     end
@@ -139,60 +197,5 @@ classdef KeystrokesJudger
                 beep_times_keys(end, :) = [];
             end
         end
-
-        % このtrialの打鍵判定を実行
-        function judge = judge_keystrokes(pressed_times, current_trial, beep_based_required_keystrokes, window_delimiters, task_based_required_keystrokes)
-
-            W_D = window_delimiters; % 略称を設置
-            num_loops = task_based_required_keystrokes.num_loops;
-            num_keys = task_based_required_keystrokes.num_keys;
-            task_based_required_keystrokes = task_based_required_keystrokes.num_keystroke_sections;
- 
-            % 配列の初期設定
-            judge = NaN(4*(num_loops - 1) + num_keys, 1); % judge配列の初期化
-            correct_key_pressed = zeros(beep_based_required_keystrokes, 1);
-            % incorrect_key_pressed = zeros(beep_based_required_keystrokes, 1); [1/6に岩間先生の指示で消去]
-
-            % judge配列の生成
-            for loop = 1:num_loops
-                for key = 1:4
-                    if beep_based_required_keystrokes < 4*(loop - 1) + key
-                        break;
-                    end                    
-
-                    % 該当キーが押されているか確認
-                    if any(pressed_times(current_trial, key, :) >= W_D.acception_window_start(current_trial, loop, key) & pressed_times(current_trial, key, :) <= W_D.acception_window_end(current_trial, loop, key))
-                        correct_key_pressed(4*(loop - 1) + key, 1) = key;
-                    end
-
-                    % % 押すべきでないキーが誤って押されていないか確認 [1/6に岩間先生の指示で消去]
-                    % for other_key = setdiff(1:4, key) % key以外のキーをチェック
-                    %     if any(pressed_times(current_trial, other_key, :) >= W_D.rejection_window_start(loop, key) & pressed_times(current_trial, other_key, :) <= W_D.rejection_window_end(loop, key))
-                    %         incorrect_key_pressed(4*(loop - 1) + key, 1) = other_key;
-                    %         break;
-                    %     end
-                    % end
-
-                    if task_based_required_keystrokes >= 4*(loop - 1) + key % task実行時に到達していないかった打鍵判定区間の対応打鍵は、判定しない→NaNが格納されたままになる
-                        % 該当キーが押され、誤ったキーが押されていない場合にのみ、judgeに1を格納。そうでなければ0を格納
-                        if correct_key_pressed(4*(loop - 1) + key, 1) == key % && incorrect_key_pressed(4*(loop - 1) + key, 1) == 0 [1/6に岩間先生の指示で消去]
-                            judge(4*(loop - 1) + key, 1) = 1;
-                        else
-                            judge(4*(loop - 1) + key, 1) = 0;
-                        end
-                    end
-                    % fprintf("%d\n", 4*(loop - 1) + key) % [検証用]
-                end
-            end
-        end
-
-        % 練習blockでのみ5trial置きに実施、被験者の打鍵遅れに応じた打鍵判定区間のシフト
-        function window_delimiters = window_shifter(window_delimiters, window_shifter)
-            window_delimiters.acception_window_start = window_delimiters.acception_window_start + window_shifter;
-            window_delimiters.acception_window_end = window_delimiters.acception_window_end + window_shifter;
-            window_delimiters.rejection_window_start = window_delimiters.rejection_window_start + window_shifter;
-            window_delimiters.rejection_window_end = window_delimiters.rejection_window_end + window_shifter;
-        end
-
     end
 end

@@ -48,10 +48,10 @@ classdef TaskJudgerPer5Trials
             if obj.current_trial == 25 % 5周目の場合。最大5周まで。6周目以降はやらせない
                 % クリア判定のみ行う
                 if sum(last_5_success_durations >= obj.trial_task_time*0.9) >= 3 % 直近5trial中 3trial以上で打鍵成功持続時間が20秒間以上になったら終了
-                    fprintf("打鍵成功持続時間が18秒以上のtrialが3つ以上です。\n");
+                    fprintf("打鍵成功持続時間が%d秒以上のtrialが3つ以上です。\n", obj.trial_task_time*0.9);
 
                     if sum(last_5_success_durations >= obj.trial_task_time*0.5) >= 4
-                        fprintf("打鍵成功持続時間が10秒未満のtrialが1つ以下です。\n");
+                        fprintf("打鍵成功持続時間が%d秒未満のtrialが1つ以下です。\n", obj.trial_task_time*0.5);
                         fprintf("\n練習blockのクリア条件達成。\n");
                         next_interval_index = 0; % 仮置き
                         determined_interval_index = obj.interval_index; % main block開始時の要求打鍵速度を今の速度に決定
@@ -77,7 +77,7 @@ classdef TaskJudgerPer5Trials
 
             else % 4周目までの場合
                 if sum(last_5_success_durations >= obj.trial_task_time*0.9) == 5 % 直近5trial全てで打鍵成功持続時間が18秒間以上になったら速度レベルを1つ上げて再挑戦（ただし、5周目では速度を変えない）
-                    fprintf("5trial全てで打鍵成功持続時間が18秒間以上です。速度を1段階上げて再挑戦します。\n");
+                    fprintf("5trial全てで打鍵成功持続時間が%d秒間以上です。速度を1段階上げて再挑戦します。\n", obj.trial_task_time*0.9);
                     obj.txt.String = 'Speed Up! & Try Again!';
                     pause(2);
                     if obj.interval_index ~= length(obj.tap_interval_list) % 最大の打鍵速度ではないことを確認
@@ -85,10 +85,10 @@ classdef TaskJudgerPer5Trials
                     end
 
                 elseif sum(last_5_success_durations >= obj.trial_task_time*0.9) >= 3 % 直近5trial中 3trial以上で打鍵成功持続時間が20秒間以上になったら終了
-                    fprintf("打鍵成功持続時間が18秒以上のtrialが3つ以上です。\n");
+                    fprintf("打鍵成功持続時間が%d秒以上のtrialが3つ以上です。\n", obj.trial_task_time*0.9);
 
                     if sum(last_5_success_durations >= obj.trial_task_time*0.5) >= 4 && obj.current_trial ~= 5 % 1周目ではないことも条件に追加
-                        fprintf("打鍵成功持続時間が10秒未満のtrialが1つ以下です。\n");
+                        fprintf("打鍵成功持続時間が%d秒未満のtrialが1つ以下です。\n", obj.trial_task_time*0.5);
                         fprintf("\n練習blockのクリア条件達成。\n");
                         next_interval_index = 0; % 仮置き
                         determined_interval_index = obj.interval_index; % main block開始時の要求打鍵速度を今の速度に決定
@@ -101,20 +101,20 @@ classdef TaskJudgerPer5Trials
 
                     elseif sum(last_5_success_durations >= obj.trial_task_time*0.5) >= 4
                         next_interval_index = obj.interval_index; % 打鍵速度維持
-                        fprintf("打鍵成功持続時間が10秒未満のtrialが1つ以下です。\n");
+                        fprintf("打鍵成功持続時間が%d秒未満のtrialが1つ以下です。\n", obj.trial_task_time*0.5);
                         fprintf("\n練習blockのクリア条件達成。\n");
                         fprintf("しかし、まだ1周目なので速度を変えずに再挑戦します。\n");
                         obj.txt.String = 'Try Again!';
 
                     else
                         next_interval_index = obj.interval_index; % 打鍵速度維持
-                        fprintf("打鍵成功持続時間が10秒未満のtrialが2つ以上あります。速度を変えずに再挑戦します。\n");
+                        fprintf("打鍵成功持続時間が%d秒未満のtrialが2つ以上あります。速度を変えずに再挑戦します。\n", obj.trial_task_time*0.5);
                         obj.txt.String = 'Try Again!';
                         pause(2);
                     end
 
                 elseif sum(last_5_success_durations < obj.trial_task_time*0.5) >= 3 % 5trial中 3trial以上で打鍵成功持続時間が10秒間未満でかつそれが初めての周でない場合、速度を下げる
-                    fprintf("打鍵成功持続時間が10秒未満のtrialが3つ以上です。速度を1段階下げて再挑戦します。\n")
+                    fprintf("打鍵成功持続時間が%d秒未満のtrialが3つ以上です。速度を1段階下げて再挑戦します。\n", obj.trial_task_time*0.5)
                     obj.txt.String = 'Speed Down & Try Again!';
                     pause(2);
 
@@ -124,7 +124,7 @@ classdef TaskJudgerPer5Trials
 
                 else
                     next_interval_index = obj.interval_index; % 打鍵速度維持
-                    fprintf("打鍵成功持続時間が18秒以上のtrialが2つ以下です。速度を変えずに再挑戦します。\n");
+                    fprintf("打鍵成功持続時間が%d秒以上のtrialが2つ以下です。速度を変えずに再挑戦します。\n", obj.trial_task_time*0.9);
                     obj.txt.String = 'Try Again!';
                     pause(2);
                 end
