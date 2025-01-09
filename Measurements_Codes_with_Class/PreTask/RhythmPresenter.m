@@ -1,0 +1,45 @@
+classdef RhythmPresenter
+    %RhythmPresenter このクラスの概要をここに記述
+    %   詳細説明をここに記述
+
+    properties
+        tap_interval
+        first_beep_time
+    end
+
+    methods (Access = public)
+        function obj = RhythmPresenter(tap_interval, beep_start_time)
+            %RhythmPresenter このクラスのインスタンスを作成
+            obj.tap_interval = tap_interval;
+            obj.first_beep_time = beep_start_time + tap_interval/2; % 音源が1/2打鍵間隔分の空白を最初に持つため。それに合わせる
+            %%% beep_start_timeが0.02秒くらい実際より小さい値を記録している？→ 0.02~0.03を足して、ラグの微調整が必要？
+        end
+
+        %　run_rhythm_presenter 2ループで速度提示（黄色数字）
+        function run_rhythm_presenter(obj, txt)
+
+            txt.Color = 'y'; % 描画の色を黄色に変更
+            count8 = 0;
+
+            % d = GetSecs - obj.first_beep_time;
+            % fprintf("差＝%d \n", d); % 最低でも2.459313e-01秒は余裕をもって到着している → 数字提示が早いとすると、beep_start_timeは本来もう少しだけ大きい値
+            for loops = 1:2  % 2ループで速度提示
+                for keys = 1:4
+                    while(1)
+                        if GetSecs >= obj.first_beep_time + count8*obj.tap_interval % 最初のビープ音時を基準に、一つ前の数字提示からtap_interval経過していたら、次の数字提示に切り替える
+                            % a = GetSecs;
+                            txt.String = num2str(keys);
+                            drawnow;
+                            % b = a - (obj.first_beep_time + count8*obj.tap_interval);
+                            % fprintf("差＝%d \n", b); % 最大で0.0012秒の遅れ
+                            count8 = count8 + 1;
+                            break; % 数字を提示したらfor文を回す
+                        end
+                    end
+                end
+            end
+            % tic;
+        end
+    end
+end
+
