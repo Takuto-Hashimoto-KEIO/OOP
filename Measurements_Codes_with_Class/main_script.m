@@ -5,24 +5,25 @@ KbName('UnifyKeyNames');
 DisableKeysForKbCheck([240, 243, 244]);
 
 % Setupフォルダにパスをつなぐ
-addpath("C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Hashimoto Resarch\Progress 2\20241205 codes with Class\Measurements\Codes_with_Class\Setup");
+addpath("./Setup");
 
 Startup_SA;
 
 % 設定を作成（beepパターンの作成も内包）
-settings = ParameterSettings('Self5', '1', 'M', 8);
-% ()内は被験者番号、block番号、blockの種類｛S, P, M｝（= 速度調節、練習、Mainのblockに対応）、開始時の速度レベル(interval_index)
+settings = ParameterSettings('Pre01', '3', 'M', 12);
+% ()内は被験者番号、block番号、blockの種類｛S1, S2, P, M｝（= 速度調節、練習、Mainのblockに対応）、開始時の速度レベル(interval_index)
 
 % 被験者への提示画面の準備
 figure('Color', 'k', 'Position', [0.0010    0.0490    2.5600    1.3193]*500); % 黒色の背景を持つ新しい図を開く
 axis off; % 軸を非表示にする
 hold on;
-pause(1);
+pause(1)
 
 % 被験者へのBlock開始の提示
 block_start_notifier(settings.block_type);
 % sendCommand(daq,1); % block開始
-pause(3); % 3秒間待機
+pause(3); % 3秒間待機 
+% pause(8); % [自己被験用] この間に画面を移動
 cla;
 
 % 各trial&各task終了後の打鍵解析の実行
@@ -30,11 +31,12 @@ trial = TrialMaster(settings); %A% ここでsettingまるごと入れていい�
 next_interval_index = settings.IntervalIndexAtStart; % 次trialの打鍵速度の番号
 
 % Pretask, Task, PostTaskフォルダにパスをつなぐ
-addpath("C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Hashimoto Resarch\Progress 2\20241205 codes with Class\Measurements\Codes_with_Class\PreTask");
-addpath("C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Hashimoto Resarch\Progress 2\20241205 codes with Class\Measurements\Codes_with_Class\Task");
-addpath("C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Hashimoto Resarch\Progress 2\20241205 codes with Class\Measurements\Codes_with_Class\PostTask");
+addpath("D:\Documents\MATLAB\hashimoto2024\20240109~ codes with Class\Measurements\Measurements_Codes_with_Class\PreTask");
+addpath("D:\Documents\MATLAB\hashimoto2024\20240109~ codes with Class\Measurements\Measurements_Codes_with_Class\Task");
+addpath("D:\Documents\MATLAB\hashimoto2024\20240109~ codes with Class\Measurements\Measurements_Codes_with_Class\PostTask");
 
 for current_trial = 1:settings.NumTrials
+    
     % for current_trial = 1:6 % 仮で少ないtrialだけ回すときの[検証用]
 
     % trial開始～終了までを実行（1taskごとの打鍵判定処理を内包）

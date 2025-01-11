@@ -77,41 +77,43 @@ classdef KeystrokesJudger
                         tolerance_percentage = J_R_P.tolerance_percentage_2; % 通常の打鍵成功許容範囲の割合
                         rejection_percentage = 1 - tolerance_percentage; % 誤った打鍵の検出を行う範囲の割合
                     end
-
+                    
                     beep_point = obj.beep_times_keys(loop, key); % この打鍵判定区間の中心時刻。ラグのある数字提示時刻display_timesを使わず、beep_timeを基準に決定
                     window_delimiters.acception_window_start(obj.current_trial, loop, key) = beep_point - obj.tap_interval * tolerance_percentage; % 成功判定時間窓の開始時刻 %%%
                     window_delimiters.acception_window_end(obj.current_trial, loop, key) = beep_point + obj.tap_interval * tolerance_percentage;   % 成功判定時間窓の終了時刻 %%%
-
+                    
                     % correct_key_pressed = any(block.tap_times(num_trials, key, :) >= tap_window_start & block.tap_times(num_trials, key, :) <= tap_window_end);
-
+                    
                     % 他のキーが誤って押されていないか確認する時間窓
                     window_delimiters.rejection_window_start(loop, key) = beep_point - obj.tap_interval * rejection_percentage; % 失敗判定時間窓の開始時刻 %%%
                     window_delimiters.rejection_window_end(loop, key) = beep_point + obj.tap_interval * rejection_percentage;   % 失敗判定時間窓の終了時刻 %%%
                 end
             end
         end
-
+        
         % このtrialの打鍵判定を実行
         function judge = judge_keystrokes(obj, pressed_times, beep_based_required_keystrokes, task_based_required_keystrokes)
-
+            
             W_D = obj.window_delimiters; % 略称を設置
             acception_window_start = W_D.acception_window_start(obj.current_trial, :, :);
             acception_window_end = W_D.acception_window_end(obj.current_trial, :, :);
             rejection_window_start = W_D.rejection_window_start(obj.current_trial, :, :);
             rejection_window_end = W_D.rejection_window_end(obj.current_trial, :, :);
-
+            
             % judgeの時だけ。window_shift_ratesに応じて打鍵判定区間をシフト
-            if obj.block_type == 'P' && obj.current_trial >= 6
-                num_last_loop  = ceil(obj.current_trial/ 5) - 1; % 前回のループ番号
-
-                % 前回のループで得たwindow_shift_rateに応じて打鍵判定区間をシフト
-                window_shift = W_D.window_shift_rates(num_last_loop)*(obj.tap_interval/2);
-                fprintf('\nこのtrialでは、打鍵判定区間を%d 秒だけ後ろにずらす\n', window_shift); % [検証用]
-                acception_window_start = acception_window_start + window_shift;
-                acception_window_end = acception_window_end + window_shift;
-                rejection_window_start = rejection_window_start + window_shift;
-                rejection_window_end = rejection_window_end + window_shift;
-
+            if obj.block_type == 'P'
+                if obj.current_trial >= 6
+                    num_last_loop  = ceil(obj.current_trial/ 5) - 1; % 前回のループ番号
+                    
+                    % 前回のループで得たwindow_shift_rateに応じて打鍵判定区間をシフト
+                    window_shift = W_D.window_shift_rates(num_last_loop)*(obj.tap_interval/2);
+                    fprintf('\nこのtrialでは、打鍵判定区間を%d 秒だけ後ろにずらす\n', window_shift); % [検証用]
+                    acception_window_start = acception_window_start + window_shift;
+                    acception_window_end = acception_window_end + window_shift;
+                    rejection_window_start = rejection_window_start + window_shift;
+                    rejection_window_end = rejection_window_end + window_shift;
+                end
+                
             elseif obj.block_type == 'M'
                 % 一定のwindow_shift_rateで打鍵判定区間をシフト
                 window_shift = W_D.window_shift_rate*(obj.tap_interval/2);
@@ -120,7 +122,7 @@ classdef KeystrokesJudger
                 rejection_window_start = rejection_window_start + window_shift;
                 rejection_window_end = rejection_window_end + window_shift;
             end
-
+            
             num_loops = task_based_required_keystrokes.num_loops;
             num_keys = task_based_required_keystrokes.num_keys;
             task_based_required_keystrokes = task_based_required_keystrokes.num_keystroke_sections;
@@ -129,24 +131,29 @@ classdef KeystrokesJudger
             judge = NaN(4*(num_loops - 1) + num_keys, 1); % judge配列の初期化
             correct_key_pressed = zeros(beep_based_required_keystrokes, 1);
             % incorrect_key_pressed = zeros(beep_based_required_keystrokes, 1); [1/6に岩間先生の指示で消去]
-
+            
             % judge配列の生成
             for loop = 1:num_loops
                 for key = 1:4
                     if beep_based_required_keystrokes < 4*(loop - 1) + key
                         break;
                     end
-
+                    
                     % 該当キーが押されているか確認
                     % pressed_times の最小値を取得 [1/9に岩間先生の指示で変更]
-                    min_time = min(pressed_times(obj.current_trial, key, :), [], 'all');
-
-                    % 最小時刻が受容ウィンドウに収まっているか確認
-                    if min_time >= acception_window_start(1, loop, key) && ...
-                            min_time <= acception_window_end(1, loop, key)
-                        correct_key_pressed(4*(loop - 1) + key, 1) = key;
+                    % min_time = min(pressed_times(obj.current_trial, key, :), [], 'all');
+                    
+                    % 最小押し下し時刻が受容ウィンドウに収まっているか確認[1/10に岩間先生の指示で変更]
+                    if any(pressed_times(obj.current_trial, key, :) >= acception_window_start(1, loop, key) & ...
+                            pressed_times(obj.current_trial, key, :) <= acception_window_end(1, loop, key))
+                        if any(pressed_times(obj.current_trial, key, :) >= obj.beep_times_keys(loop, key) - obj.tap_interval & ...
+                            pressed_times(obj.current_trial, key, :) < acception_window_start(1, loop, key))
+                        % ↑フライングして打っていないかを確認
+                        else
+                            correct_key_pressed(4*(loop - 1) + key, 1) = key;
+                        end
                     end
-
+                    
                     % % 押すべきでないキーが誤って押されていないか確認 [1/6に岩間先生の指示で消去]
                     % for other_key = setdiff(1:4, key) % key以外のキーをチェック
                     %     if any(pressed_times(obj.current_trial, other_key, :) >= rejection_window_start(1, loop, key) & ...

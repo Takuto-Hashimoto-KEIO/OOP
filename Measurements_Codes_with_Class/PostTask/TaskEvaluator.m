@@ -38,7 +38,8 @@ classdef TaskEvaluator
             obj = obj.judge_keystrokes(block_type);
 
             % 打鍵成功持続時間の計算と保存
-            obj = obj.calculate_success_duration();
+            obj = obj.calculate_success_duration(); 
+            fprintf('このtrialの打鍵成功持続時間 = %d\n\n', obj.Results.success_duration(obj.current_trial));
 
             % 「Blank」の画面提示の終了
             blank_time_range = 5 - (GetSecs - blank_start_time); % blankの時間が全体で5秒間になるよう調整
@@ -47,7 +48,7 @@ classdef TaskEvaluator
         end
 
         % 速度変更有無の判定と適用（Main blockだけで実行するため、関数run_post_taskには含めない）
-        function [speed_changer, consecutive_same_speeds, interval_index] = speed_regulator(obj, speed_changer, consecutive_same_speeds, interval_index, num_reference_trials, speed_changer_activate_points)
+        function [speed_changer, consecutive_same_speeds, interval_index] = speed_regulator(obj, speed_changer, consecutive_same_speeds, interval_index, num_reference_trials, speed_changer_activate_points, tap_interval_list)
             x = num_reference_trials; % 直近何trialを参照するか[要検討] %%%
 
             fprintf('consecutive_same_speeds = %d\n', consecutive_same_speeds);
@@ -60,7 +61,7 @@ classdef TaskEvaluator
                 end
                 
                 if consecutive_same_speeds >= speed_changer_activate_points % 最低でも連続speed_changer_activate_points trialは同じ要求打鍵速度を保つ %%%
-                    if all(last_x_durations >= obj.trial_task_time * 0.9) && interval_index <= 10
+                    if all(last_x_durations >= obj.trial_task_time * 0.9) && interval_index <= length(tap_interval_list)-1
                         interval_index = interval_index + 1; % 速度上昇
                         speed_changer = 1;
                     elseif all(last_x_durations <= obj.trial_task_time * 0.5) && interval_index >= 2

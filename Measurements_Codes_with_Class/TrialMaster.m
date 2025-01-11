@@ -101,12 +101,10 @@ classdef TrialMaster
                         [S1_task_judger, obj.screening_terminater] = S1_task_judger.run_task_judger_per_2trials(obj.txt);
                         next_interval_index = S1_task_judger.interval_index; % 次のtrialの打鍵速度の番号を設定
                     else % 奇数trialの終了時
-                        fprintf('このtrialの打鍵成功持続時間 = %d\n', task_ev.Results.success_duration(obj.current_trial));
                         next_interval_index = obj.interval_index; % 次trialは打鍵速度を維持
                     end
 
                 case 'S2' % Speed adjustment blockのみで3trialごとに、速度増加を実施 & 9trial後に終了操作（Screeening2のみ）
-                    fprintf('このtrialの打鍵成功持続時間 = %d\n', task_ev.Results.success_duration(obj.current_trial));
                     if obj.current_trial == cfg.NumTrials  % 9trialの終了時
                         % blockの終了操作
                         S2_task_judger = TaskJudgerPer3Trials(obj.current_trial, obj.interval_index, task_ev.Results.success_duration, cfg.TapIntervalList, cfg.TrialTaskTime);
@@ -121,7 +119,6 @@ classdef TrialMaster
                     end
 
                 case 'P' % Practice blockのみで実施
-                    fprintf('このtrialの打鍵成功持続時間 = %d\n', task_ev.Results.success_duration(obj.current_trial));
                     if mod(obj.current_trial, 5) == 0  % 5の倍数のtrialの終了時
                         % 次回のtrialの速度の決定およびblockの終了判定
                         P_task_judger = TaskJudgerPer5Trials(obj.current_trial, obj.interval_index, ...
@@ -142,7 +139,7 @@ classdef TrialMaster
                 case 'M' % Main blockのみで実施
                     % 速度変更有無の判定と適用を行う（Main blockだけで実行するため、関数run_post_taskには含めない）
                     [obj.speed_changer, obj.consecutive_same_speeds, next_interval_index] = task_ev.speed_regulator( ...
-                        obj.speed_changer, obj.consecutive_same_speeds, obj.interval_index, cfg.num_reference_trials, cfg.speed_changer_activate_points);
+                        obj.speed_changer, obj.consecutive_same_speeds, obj.interval_index, cfg.num_reference_trials, cfg.speed_changer_activate_points, cfg.TapIntervalList);
             end
         end
     end

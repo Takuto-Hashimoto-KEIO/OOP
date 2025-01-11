@@ -15,39 +15,42 @@ classdef ParameterSettings
         tolerance_percentage_1 % task開始直後の打鍵成功許容範囲の割合 少し緩める
         tolerance_percentage_2 % 通常の打鍵成功許容範囲の割合
         judge_range_parameters % 上記3つのパラメータをまとめてこの構造体に格納
-
+        
         % 速度変更に関するパラメータ
         num_reference_trials
         speed_changer_activate_points
-
+        
         % ブロックごとに代わる条件
         IntervalIndexAtStart
-
+        
         % 保存用の名前
         ParticipantNumber
         BlockNumber
-
+        
         % ビープ音源
         BeepPatterns
-
+        
         % 保存するデータ（構造体）
         Results
     end
-
+    
     methods
         % コンストラクタによる初期化
         function obj = ParameterSettings(participantNumber, blockNumber, block_type, intervalIndexAtStart)
-
+            
             obj.block_type = block_type;
-
+            
             % 1人の実験全体で不変の条件
             obj.KeyMapping = [KbName('J'), KbName('E'), KbName('I'), KbName('F')]; %　各キーに対応するキースキャンコード（keyCode：番号）を保存
-            obj.TapIntervalList = [1/2, 1/2.3, 1/2.6, 1/2.9, 1/3.2, 1/3.5, 1/3.9, 1/4.3, 1/4.7, 1/5.2, 1/5.7];
-            % 検討中の新リスト→ [1/2, 1/2.2, 1/2.4, 1/2.6, 1/2.85, 1/3.1, 1/3.4, 1/3.7, 1/4.0. 1/4.3];
-
-
+            % 旧リスト→obj.TapIntervalList = [1/2, 1/2.3, 1/2.6, 1/2.9, 1/3.2, 1/3.5, 1/3.9, 1/4.3, 1/4.7, 1/5.2, 1/5.7];
+            obj.TapIntervalList = [1/2, 1/2.2, 1/2.4, 1/2.6, 1/2.85, 1/3.1, 1/3.4, 1/3.7, 1/4.0, 1/4.3, 1/4.65, 1/4.9];
+            % 検討中の新リスト→ [1/2, 1/2.2, 1/2.4, 1/2.6, 1/2.85, 1/3.1, 1/3.4, 1/3.7, 1/4.0, 1/4.3, 1/4.3];
+            
+            
             if block_type == 'P'
                 obj.NumTrials = 25; % 最大のtrial数（5×5）
+            elseif block_type == 'S1'
+                obj.NumTrials = 24;
             elseif block_type == 'S2'
                 obj.NumTrials = 9;
             else
@@ -55,7 +58,7 @@ classdef ParameterSettings
             end
             obj.NumLoops = 30;
             obj.NumKeys = 4;
-            obj.TrialTaskTime = 10; % 1trialのtask実行時間
+            obj.TrialTaskTime = 20; % 1trialのtask実行時間
 
             % 打鍵成功判定区間のパラメータ
             obj.relaxation_percentage = 1; % 打鍵成功判定を大きく緩和する範囲の割合　task全体での要求打鍵数に対する割合で記述
@@ -96,7 +99,7 @@ classdef ParameterSettings
             if block_type == 'P'
                 window_delimiters.window_shift_rates = NaN(obj.NumTrials/5, 1); % 練習trialのみ、打鍵判定区間のシフトレートを追加            
             elseif block_type == 'M'
-                window_shift_rate = input('Input "mean_window_shift_rates" in practice block->');
+                window_shift_rate = input('Input "mean_window_shift_rates" in practice block->'); % 入力値は最大でも0.2
                 window_delimiters.window_shift_rate = window_shift_rate;
             end
 
