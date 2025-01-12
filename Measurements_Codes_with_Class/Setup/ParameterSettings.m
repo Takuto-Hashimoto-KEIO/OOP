@@ -99,8 +99,14 @@ classdef ParameterSettings
             if block_type == 'P'
                 window_delimiters.window_shift_rates = NaN(obj.NumTrials/5, 1); % 練習trialのみ、打鍵判定区間のシフトレートを追加            
             elseif block_type == 'M'
-                window_shift_rate = input('Input "mean_window_shift_rates" in practice block->'); % 入力値は最大でも0.2
-                window_delimiters.window_shift_rate = window_shift_rate;
+                window_shift_rate = input('Input "mean_window_shift_rates" in practice block->');
+                
+                if abs(window_shift_rate) > 0.2  % 入力の絶対値は最大でも0.2
+                    error("Incorrect window_shift_rate." + ...
+                        " Enter a value that is less than or equal to 0.2 in absolute value");
+                else
+                    window_delimiters.window_shift_rate = window_shift_rate;
+                end
             end
 
             obj.Results = struct( ...

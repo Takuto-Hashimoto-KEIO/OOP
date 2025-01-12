@@ -5,12 +5,12 @@ KbName('UnifyKeyNames');
 DisableKeysForKbCheck([240, 243, 244]);
 
 % Setupフォルダにパスをつなぐ
-addpath("./Setup");
+addpath(".\Setup");
 
 Startup_SA;
 
 % 設定を作成（beepパターンの作成も内包）
-settings = ParameterSettings('Pre01', '3', 'M', 12);
+settings = ParameterSettings('Self', '2', 'M', 12);
 % ()内は被験者番号、block番号、blockの種類｛S1, S2, P, M｝（= 速度調節、練習、Mainのblockに対応）、開始時の速度レベル(interval_index)
 
 % 被験者への提示画面の準備
@@ -22,7 +22,7 @@ pause(1)
 % 被験者へのBlock開始の提示
 block_start_notifier(settings.block_type);
 % sendCommand(daq,1); % block開始
-pause(3); % 3秒間待機 
+pause(3); % 3秒間待機
 % pause(8); % [自己被験用] この間に画面を移動
 cla;
 
@@ -31,13 +31,13 @@ trial = TrialMaster(settings); %A% ここでsettingまるごと入れていい�
 next_interval_index = settings.IntervalIndexAtStart; % 次trialの打鍵速度の番号
 
 % Pretask, Task, PostTaskフォルダにパスをつなぐ
-addpath("D:\Documents\MATLAB\hashimoto2024\20240109~ codes with Class\Measurements\Measurements_Codes_with_Class\PreTask");
-addpath("D:\Documents\MATLAB\hashimoto2024\20240109~ codes with Class\Measurements\Measurements_Codes_with_Class\Task");
-addpath("D:\Documents\MATLAB\hashimoto2024\20240109~ codes with Class\Measurements\Measurements_Codes_with_Class\PostTask");
+addpath(".\PreTask");
+addpath(".\Task");
+addpath(".\PostTask");
 
-for current_trial = 1:settings.NumTrials
-    
-    % for current_trial = 1:6 % 仮で少ないtrialだけ回すときの[検証用]
+% for current_trial = 1:settings.NumTrials
+
+for current_trial = 1:5 % 仮で少ないtrialだけ回すときの[検証用]
 
     % trial開始～終了までを実行（1taskごとの打鍵判定処理を内包）
     [trial, next_interval_index] = trial.run_trial(current_trial, next_interval_index);

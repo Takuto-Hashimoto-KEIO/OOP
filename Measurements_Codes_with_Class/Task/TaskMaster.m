@@ -21,8 +21,8 @@ classdef TaskMaster
 
         txt
         
-        miss_ditected
-        success_ditected
+        miss_detected
+        success_detected
         draw_counter
         next_draw_time
         next_section_update_time
@@ -44,8 +44,8 @@ classdef TaskMaster
             obj.num_keys = 1;
             obj.num_keystroke_sections = 1; % 今回のtaskでいくつめの打鍵判定区間かを記録]
 
-            obj.miss_ditected = 0;
-            obj.success_ditected = 0;
+            obj.miss_detected = 0;
+            obj.success_detected = 0;
             obj.draw_counter = 0; % 今回のtaskで何回目の数字提示かを記録
             obj.next_draw_time = obj.Results.beep_start_times(obj.current_trial) + (8 + 1/2)*obj.tap_interval;
             obj.next_section_update_time = obj.Results.beep_start_times(obj.current_trial) + (8 + 1)*obj.tap_interval;
@@ -69,7 +69,7 @@ classdef TaskMaster
                 [obj, keyIsDown, pressed_keys, while_count] = key_recoder(obj, while_count);
 
                 % リアルタイム打鍵成功判定
-                if keyIsDown && obj.miss_ditected == 0 % 打鍵があり、かつ、この打鍵判定区間で一度も”Miss”判定が出ていないときのみ、打鍵の成功判定を実行
+                if keyIsDown && obj.miss_detected == 0 % 打鍵があり、かつ、この打鍵判定区間で一度も”Miss”判定が出ていないときのみ、打鍵の成功判定を実行
                     obj = keystroke_realtime_judger(obj, pressed_keys);
                 end
 
@@ -119,23 +119,23 @@ classdef TaskMaster
             % wrongKey_pressed = any(ismember(pressed_keys, wrong_keys)); % 誤ったキーが押されたか確認
             % 
             % if wrongKey_pressed % 誤った打鍵があったとき
-            %     if obj.miss_ditected == 0
+            %     if obj.miss_detected == 0
             %         fprintf('Miss');
-            %         obj.miss_ditected = 1;
+            %         obj.miss_detected = 1;
             %     end
             % 
             % elseif all(pressed_keys == obj.num_keys) && isscalar(pressed_keys) % 正しい打鍵だけをしたとき（ビープ音提示の前後tap_interval÷2秒間で打鍵成功）
-            %     if obj.success_ditected == 0
+            %     if obj.success_detected == 0
             %         fprintf('Success');
-            %         obj.success_ditected = 1;
+            %         obj.success_detected = 1;
             %     end
             % end
 
-            % Miss判定を削除し、新たにSuccess判定だけ実装（1/6 岩間先生の指示）
+            % Miss判定を削除し、新たにSuccess判定だけ実装（1/6 岩間先生の指示で変更）
             if any(pressed_keys == obj.num_keys) && isscalar(pressed_keys) % 正しい打鍵をしたとき（ビープ音提示の前後tap_interval÷2秒間で打鍵成功）
-                if obj.success_ditected == 0
+                if obj.success_detected == 0
                     fprintf('Success');
-                    obj.success_ditected = 1;
+                    obj.success_detected = 1;
                 end
             end
         end
@@ -170,7 +170,7 @@ classdef TaskMaster
 
         % 時間経過によるfail判定
         function fail_judger(obj)
-            if obj.miss_ditected == 0 && obj.success_ditected == 0 % SuccessでもMissでもなかったとき
+            if obj.miss_detected == 0 && obj.success_detected == 0 % SuccessでもMissでもなかったとき
                 fprintf('Fail');
             end
         end
@@ -193,8 +193,8 @@ classdef TaskMaster
             draw_stopper = 0; % 描画のロックを解除
 
             % SuccessとMissの判定の有無をリセット
-            obj.miss_ditected = 0;
-            obj.success_ditected = 0;
+            obj.miss_detected = 0;
+            obj.success_detected = 0;
 
             fprintf('\n');
         end

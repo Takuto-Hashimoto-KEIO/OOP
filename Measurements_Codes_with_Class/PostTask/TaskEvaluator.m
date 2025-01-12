@@ -29,6 +29,7 @@ classdef TaskEvaluator
         function obj = run_post_task(obj, txt, block_type)
 
             % 「Blank」を画面提示
+            clear sound % 直前にビープ音を消す
             txt.String = 'Blank';
             drawnow;
             % sendCommand(daq,6); % Blank

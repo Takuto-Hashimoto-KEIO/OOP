@@ -36,8 +36,6 @@ classdef KeystrokesJudger
             % beep音の鳴った時刻の配列データ（キー別）を作成
             obj.beep_times_keys = obj.make_beep_times_keys(obj.beep_start_time, obj.tap_interval, obj.trial_task_time);
 
-            % obj.beep_times_keys = obj.beep_times_keys - obj.beep_times_keys(1,1); % [検証用]　この時点で既に値がおかしい
-
             % 打鍵判定の時間窓（打鍵判定区間）の配列の作成
             [obj.window_delimiters, beep_based_required_keystrokes] = obj.make_judge_windows();
 
@@ -139,10 +137,7 @@ classdef KeystrokesJudger
                         break;
                     end
                     
-                    % 該当キーが押されているか確認
-                    % pressed_times の最小値を取得 [1/9に岩間先生の指示で変更]
-                    % min_time = min(pressed_times(obj.current_trial, key, :), [], 'all');
-                    
+                    % 該当キーが押されているか確認                    
                     % 最小押し下し時刻が受容ウィンドウに収まっているか確認[1/10に岩間先生の指示で変更]
                     if any(pressed_times(obj.current_trial, key, :) >= acception_window_start(1, loop, key) & ...
                             pressed_times(obj.current_trial, key, :) <= acception_window_end(1, loop, key))

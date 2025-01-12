@@ -24,12 +24,12 @@ classdef SpeedChangeToReady
             drawnow;
             pause(1);
 
-            [pause_rest_time, obj] = speedChangeNotifier(obj);
-            
-            obj.restNotifier(pause_rest_time, txt);
-
-            % sendCommand(daq,3); % Ready
-            obj.readyNotifier(txt)
+            % [pause_rest_time, obj] = speedChangeNotifier(obj);
+            % 
+            % obj.restNotifier(pause_rest_time, txt);
+            % 
+            % % sendCommand(daq,3); % Ready
+            % obj.readyNotifier(txt)
         end
     end
 
