@@ -4,6 +4,7 @@ classdef GenerateAramakiPlot
 
     properties
         participant_name
+        block_type
         num_block
 
         num_trials
@@ -40,6 +41,21 @@ classdef GenerateAramakiPlot
         % データのロードと格納
         function obj = load_data(obj, folder_path, files, file_idx)
 
+            % ファイル名を取り出す
+            filename = files(file_idx).name;
+
+            % blockの種類を抽出
+            pattern = 'Block_Result_.*?_(.*?)_block\d+_\d+';
+            obj.block_type = regexp(filename, pattern, 'tokens', 'once');
+            if ~isempty(obj.block_type)
+                obj.block_type = obj.block_type{1}; % セル配列から文字列を取得
+            else
+                obj.block_type = ''; % パターンに一致しない場合の処理
+            end
+
+            % ファイル名とblockの種類を表示（デバッグ用、必要なら削除）
+            fprintf('Processing file: %s, Block type: %s\n', filename, obj.block_type);
+
             data = load(fullfile(folder_path, files(file_idx).name));
 
             % データを抽出
@@ -57,7 +73,6 @@ classdef GenerateAramakiPlot
             % trial数を取得
             % obj.num_trials = 2; % 一時的に使用
             obj.num_trials = block.num_last_trial; % 本来はこれを使用
-
 
             % キーの種類数を取得
             obj.num_keys = size(obj.beep_times_keys, 3);
@@ -151,9 +166,19 @@ classdef GenerateAramakiPlot
                             break;
                         end
 
-                        % ビープ音の提示時刻を中心に決定した打鍵受付区間 これらをtask開始時のビープ音の時刻を基準に時刻を補正
-                        acceptance_start = obj.window_delimiters.acception_window_start(trial_idx, loop, key);
-                        acceptance_end = obj.window_delimiters.acception_window_end(trial_idx, loop, key);
+                        % window_shiftを算出
+                        if obj.block_type == 'P'
+                            window_shift = obj.window_delimiters.window_shift_rates(ceil(trial_idx/4)) * obj.tap_intervals(trial_idx)/2;
+                        elseif obj.block_type == 'M'
+                            window_shift = obj.window_delimiters.window_shift_rate * obj.tap_intervals(trial_idx)/2;
+                        else
+                            window_shift = 0;
+                        end
+
+
+                        % ビープ音の提示時刻を中心に決定した打鍵受付区間 これらをtask開始時のビープ音の時刻を基準に補正
+                        acceptance_start = obj.window_delimiters.acception_window_start(trial_idx, loop, key) + window_shift;
+                        acceptance_end = obj.window_delimiters.acception_window_end(trial_idx, loop, key) + window_shift;
                         acceptance_start = acceptance_start - obj.beep_times_keys(trial_idx, 1, 1);
                         acceptance_end = acceptance_end - obj.beep_times_keys(trial_idx, 1, 1);
 
@@ -179,7 +204,7 @@ classdef GenerateAramakiPlot
                 yticklabels({'NUM', 'F', 'I', 'E', 'J'}); % NUMを含めたラベル
                 xlabel('Time (sec)');
                 ylabel('Keys');
-                title(['Subject ' obj.participant_name ', block ' obj.num_block ', trial ' num2str(trial_idx) ', ' ...
+                title(['Subject ' obj.participant_name ', ' obj.block_type ' block ' obj.num_block ', trial ' num2str(trial_idx) ', ' ...
                     num2str(1/obj.tap_intervals(trial_idx)) ' Hz']);
 
                 % 塗りつぶし部分を凡例に含めないための調整
