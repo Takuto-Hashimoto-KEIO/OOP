@@ -32,8 +32,9 @@ classdef TaskEvaluator
             clear sound % 直前にビープ音を消す
             txt.String = 'Blank';
             drawnow;
-            % sendCommand(daq,6); % Blank
-            blank_start_time = GetSecs; % [検証用]
+            % global DaqInstance;
+            % sendCommand(DaqInstance,6); % Blank提示開始時
+            % blank_start_time = GetSecs; % [検証用]
 
             % 打鍵判定と保存
             obj = obj.judge_keystrokes(block_type);

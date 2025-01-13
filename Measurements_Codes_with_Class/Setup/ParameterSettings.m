@@ -132,6 +132,9 @@ classdef ParameterSettings
             % DevID = 'Dev2'; % Please check
             % daq = DAQclass(DevID);
             % daq.init_output()
+
+            % daqの作成
+            % obj.setupDAQ();
         end
 
         %% ビープ音のパターン生成
@@ -169,6 +172,15 @@ classdef ParameterSettings
                 end
                 beepPatterns{idx} = patternSignal;
             end
+        end
+    end
+
+    methods (Static)
+        function setupDAQ()
+            global DaqInstance;
+            DevID = 'Dev2'; % Please check
+            DaqInstance = DAQclass(DevID);
+            DaqInstance.init_output();
         end
     end
 end

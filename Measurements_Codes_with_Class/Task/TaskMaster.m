@@ -61,6 +61,13 @@ classdef TaskMaster
             % if ~isvalid(obj.txt) % txtが有効か確認
             %     error('渡されたtxtオブジェクトが無効です。');
             % end
+
+            pause_time_to_task = obj.Results.beep_start_times(obj.current_trial) + 8*obj.tap_interval - GetSecs;
+            % fprintf("%d",a);[検証用]
+            pause(pause_time_to_task);
+            % global DaqInstance;
+            % sendCommand(DaqInstance,5); % task直前（打鍵記録開始時）
+
             obj.txt.Color = 'w'; % 描画用オブジェクトの色を更新
 
             while(1) % 打鍵記録、リアルタイム打鍵成功判定、数字提示、打鍵判定区間更新をtrial_task_timeが経過するまで繰り返す

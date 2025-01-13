@@ -23,6 +23,8 @@ classdef Beep_Player
             sound(pattern_signal, sampleRate);
 
             beep_start_time = GetSecs;
+            % global DaqInstance;
+            % sendCommand(DaqInstance,4); % pre-task提示開始時
         end
     end
 end

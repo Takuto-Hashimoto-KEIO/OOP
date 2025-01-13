@@ -10,7 +10,7 @@ addpath(".\Setup");
 Startup_SA;
 
 % 設定を作成（beepパターンの作成も内包）
-settings = ParameterSettings('Self', '2', 'M', 12);
+settings = ParameterSettings('Self', '1', 'M', 12);
 % ()内は被験者番号、block番号、blockの種類｛S1, S2, P, M｝（= 速度調節、練習、Mainのblockに対応）、開始時の速度レベル(interval_index)
 
 % 被験者への提示画面の準備
@@ -21,7 +21,8 @@ pause(1)
 
 % 被験者へのBlock開始の提示
 block_start_notifier(settings.block_type);
-% sendCommand(daq,1); % block開始
+% global DaqInstance;            
+% sendCommand(DaqInstance,1); % block開始
 pause(3); % 3秒間待機
 % pause(8); % [自己被験用] この間に画面を移動
 cla;
@@ -42,7 +43,7 @@ for current_trial = 1:5 % 仮で少ないtrialだけ回すときの[検証用]
     % trial開始～終了までを実行（1taskごとの打鍵判定処理を内包）
     [trial, next_interval_index] = trial.run_trial(current_trial, next_interval_index);
 
-    % Main blovck 以外での終了処理
+    % Main block 以外での終了処理
     if ismember(settings.block_type, ["S1", "S2", "P"])
         if trial.screening_terminater == 1
             break;
@@ -51,7 +52,8 @@ for current_trial = 1:5 % 仮で少ないtrialだけ回すときの[検証用]
 
     % trial.Resultsに保存するほぼ全てのtrialのデータが集約される
 end
-% sendCommand(daq,7); % Block終了
+% global DaqInstance;
+% sendCommand(DaqInstance,7); % Block終了
 
 ListenChar(0) % 「キーボード入力をすべてMATLABのコマンドウィンドウから遮断」の解除
 
