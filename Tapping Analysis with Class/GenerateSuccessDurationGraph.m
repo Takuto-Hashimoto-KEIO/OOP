@@ -90,7 +90,7 @@ classdef GenerateSuccessDurationGraph
             obj.participant_name = data.num_participant;
             obj.success_duration = data.block.success_duration;
             obj.num_trials = data.block.num_last_trial;  % ファイル固有のトライアル数を取
-            obj.Hz_list = data.block.tap_interval_list; % 測定で使用された打鍵速度（Hz）のリスト得
+            obj.Hz_list = 1 ./ data.block.tap_interval_list; % 測定で使用された打鍵速度（Hz）のリストを取得
 
             % 配列のリサイズ（不足があれば拡張）
             if size(obj.all_durations, 1) < obj.num_trials
@@ -207,6 +207,22 @@ classdef GenerateSuccessDurationGraph
             title(['Subject ' obj.participant_name '  Keystroke Success Duration by Block'], 'FontSize', 16);
             box on;
 
+            % 各ブロックごとのHz最頻値を計算し、テキストとして表示
+            unique_blocks = unique(obj.all_positions);
+            for block_idx = unique_blocks'
+                block_Hz = obj.Hz(:, block_idx);  % 該当ブロックのHzデータを取得
+                mode_Hz = mode(block_Hz(~isnan(block_Hz)));  % NaNを除いた最頻値を計算
+
+                % 有効数字2桁に変換
+                mode_Hz_sig2 = round(mode_Hz, 1 - floor(log10(abs(mode_Hz))));
+
+                % 少数第一位まで表示するようにフォーマットを調整
+                text(block_idx, -0.5, sprintf('%.1f Hz', mode_Hz_sig2), ...
+                    'HorizontalAlignment', 'center', ...
+                    'FontSize', 12, ...
+                    'VerticalAlignment', 'top');  % 横軸ラベルの上に表示
+            end
+
             fontsize(36,"points")
             hold off;
 
@@ -218,21 +234,6 @@ classdef GenerateSuccessDurationGraph
 
             % 箱ひげ図をMATLAB Figure (.fig)形式で保存
             savefig(fullfile(output_folder, ['subject_' obj.participant_name '_success_durations_graph.fig']));
-
-            % 各ブロックごとのHz最頻値を計算し、テキストとして表示
-            unique_blocks = unique(obj.all_positions);
-            for block_idx = unique_blocks'
-                block_Hz = obj.Hz(:, block_idx);  % 該当ブロックのHzデータを取得
-                mode_Hz = mode(block_Hz(~isnan(block_Hz)));  % NaNを除いた最頻値を計算
-
-                % 有効数字2桁に変換
-                mode_Hz_sig2 = round(mode_Hz, 1 - floor(log10(abs(mode_Hz))));
-
-                % テキストを表示
-                text(block_idx, -0.5, sprintf('%.2g Hz', mode_Hz_sig2), 'HorizontalAlignment', 'center', 'FontSize', 12, 'VerticalAlignment', 'top');  % 横軸ラベルの上に表示
-            end
-
-            fontsize(36,"points")
         end
 
         function calculate_block_averages(obj, output_folder)
