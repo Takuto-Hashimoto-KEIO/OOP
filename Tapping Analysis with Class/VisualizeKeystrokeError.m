@@ -61,6 +61,7 @@ classdef VisualizeKeystrokeError
                 a_ends = sort(obj.acceptance_end(trial_idx, :));
 
                 t_n = cell(obj.keystrokes.num_keystroke_sections(trial_idx),1);
+                all_press_per_key = cell(obj.num_keys,1);
 
                 % 1打鍵判定区間ごとにプロットする押し下し時刻などの準備
                 for loop_idx = 1:obj.keystrokes.num_loops(trial_idx)
@@ -75,10 +76,18 @@ classdef VisualizeKeystrokeError
                         end
 
                         % 今回のキーを押した時刻を全て取得
-                        all_press_per_key = squeeze(obj.corrected_pressed_times(trial_idx, key_idx, :));
+                        all_press_per_key{key_idx} = squeeze(obj.corrected_pressed_times(trial_idx, key_idx, :));
+                        all_press_per_key{key_idx} = all_press_per_key{key_idx}(all_press_per_key{key_idx} ~= 0); % ちょうど0の要素を削除
+
+                        % % 検証用
+                        % zero_indices = find(all_press_per_key == 0);
+                        % if ~isempty(zero_indices)
+                        %     disp(zero_indices);
+                        % end
 
                         % 今回の打鍵判定区間の中にあるキー押し下し時刻だけを格納
-                        t_n{keystorke_idx} = all_press_per_key(all_press_per_key >= a_starts(keystorke_idx) & all_press_per_key <= a_ends(keystorke_idx));
+                        filtered_press_times = all_press_per_key{key_idx};
+                        t_n{keystorke_idx} = filtered_press_times(filtered_press_times >= a_starts(keystorke_idx) & filtered_press_times <= a_ends(keystorke_idx));
                     end
                 end
 
@@ -94,25 +103,35 @@ classdef VisualizeKeystrokeError
                             break;
                         end
 
+                        % [検証用]
+                        zero_indices = find(t_n{keystorke_idx} == 0);
+                        if numel(zero_indices) ~= 0
+                            disp(zero_indices);
+                        end
+
+                        all_press_per_key_idx = all_press_per_key{key_idx};
+
                         % 最初と最後の打鍵判定区間についてはプロットしない（配列の仕様の都合上）
                         if keystorke_idx ~= 1 && keystorke_idx ~= obj.keystrokes.num_keystroke_sections(trial_idx)
                             % 打鍵を1打鍵判定区間ごとに分類してプロット（キー押し下し開始時刻のみ）
                             if obj.judge(trial_idx, keystorke_idx) == 1 % 打鍵成功
                                 plot(t_n{keystorke_idx}, trial_idx * ones(1, size(t_n{keystorke_idx}, 1)), 'o', 'Color', colors{1}, 'MarkerFaceColor', colors{1});
-                               
-                            elseif any(a_ends(keystorke_idx) <  all_press_per_key & all_press_per_key <= a_ends(keystorke_idx + 1)) % 打鍵遅れ
-                                late_presses = all_press_per_key(a_ends(keystorke_idx) <  all_press_per_key & all_press_per_key <= a_ends(keystorke_idx + 1));
+
+                            % 注意：成功判定の場合は、その前後の押し下しはプロットされない
+                            elseif any(a_ends(keystorke_idx) < all_press_per_key_idx & all_press_per_key_idx <= a_ends(keystorke_idx + 1)) % 打鍵遅れ
+                                late_presses = all_press_per_key_idx(a_ends(keystorke_idx) <  all_press_per_key_idx & all_press_per_key_idx <= a_ends(keystorke_idx + 1));
                                 fill([a_starts(keystorke_idx), a_ends(keystorke_idx), a_ends(keystorke_idx), a_starts(keystorke_idx)], ...
                                     [trial_idx+0.5, trial_idx+0.5, trial_idx-0.5, trial_idx-0.5], ...
                                     colors{2}, 'EdgeColor', 'none', 'FaceAlpha', 0.2, 'HandleVisibility', 'off');
                                 plot(late_presses, trial_idx * ones(1, size(late_presses, 1)), 'o', 'Color', colors{2}, 'MarkerFaceColor', colors{2});
 
-                            elseif any(a_starts(keystorke_idx - 1) <= all_press_per_key & all_press_per_key < a_starts(keystorke_idx)) % 打鍵先行
-                                fast_presses = all_press_per_key(a_starts(keystorke_idx - 1) <= all_press_per_key & all_press_per_key < a_starts(keystorke_idx));
-                                fill([a_starts(keystorke_idx), a_ends(keystorke_idx), a_ends(keystorke_idx), a_starts(keystorke_idx)], ...
-                                    [trial_idx+0.5, trial_idx+0.5, trial_idx-0.5, trial_idx-0.5], ...
-                                    colors{3}, 'EdgeColor', 'none', 'FaceAlpha', 0.2, 'HandleVisibility', 'off');
-                                plot(fast_presses, trial_idx * ones(1, size(fast_presses, 1)), 'o', 'Color', colors{3}, 'MarkerFaceColor', colors{3});
+                                if any(a_starts(keystorke_idx - 1) <= all_press_per_key_idx & all_press_per_key_idx < a_starts(keystorke_idx)) % 打鍵先行
+                                    fast_presses = all_press_per_key_idx(a_starts(keystorke_idx - 1) <= all_press_per_key_idx & all_press_per_key_idx < a_starts(keystorke_idx));
+                                    fill([a_starts(keystorke_idx), a_ends(keystorke_idx), a_ends(keystorke_idx), a_starts(keystorke_idx)], ...
+                                        [trial_idx+0.5, trial_idx+0.5, trial_idx-0.5, trial_idx-0.5], ...
+                                        colors{3}, 'EdgeColor', 'none', 'FaceAlpha', 0.2, 'HandleVisibility', 'off');
+                                    plot(fast_presses, trial_idx * ones(1, size(fast_presses, 1)), 'o', 'Color', colors{3}, 'MarkerFaceColor', colors{3});
+                                end
 
                             else % 打鍵飛ばし
                                 % plot(t_n{keystorke_idx}, trial_idx, 'o', 'Color', colors{4}, 'MarkerFaceColor', colors{4});
@@ -135,7 +154,12 @@ classdef VisualizeKeystrokeError
             yticks(1:obj.num_trials);
             title([obj.participant_name ' ' 'Block Summary： ' obj.block_type ' block ' num2str(obj.num_block)]);
             % legend(legend_labels, 'Location', 'best');
-            legend(legend_labels, 'Location', 'southeast', 'AutoUpdate', 'off');
+            % legend(legend_labels, 'Location', 'northeast', 'AutoUpdate', 'off');
+            
+            lgd = legend(legend_labels, 'Location', 'northeast', 'AutoUpdate', 'off');
+
+            % 凡例をさらに上に移動
+            lgd.Position(2) = lgd.Position(2) + 0.05; % Y方向に少し上げる
 
             fontsize(36,"points")
             hold off;

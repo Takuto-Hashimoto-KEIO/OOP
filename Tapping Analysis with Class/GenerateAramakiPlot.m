@@ -39,7 +39,7 @@ classdef GenerateAramakiPlot
                 obj = load_data(obj, folder_path, files, file_idx);
                 obj = calculate_corrected_pressed_times(obj);
                 obj = calculate_acceptance_window(obj);
-                % plot_data(obj, folder_path);
+                plot_data(obj, folder_path);
 
                 % % 1blockの打鍵もつれの要約を出力 20250129 作成
                 file_summary = VisualizeKeystrokeError(obj);
