@@ -15,6 +15,10 @@ classdef VisualizeKeystrokeError
 
         acceptance_start
         acceptance_end
+
+        corrected_beep_times_keys
+        pressed_times
+        window_delimiters
     end
 
     methods

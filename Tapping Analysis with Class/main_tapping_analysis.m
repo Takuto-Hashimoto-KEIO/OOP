@@ -2,7 +2,7 @@ clear
 close all
 
 %% 読み込むフォルダパスを指定
-folder_path = "C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Hashimoto Resarch\Progress 2\Results\20250114~ 予備実験4\20250130_Y408\tapping_data";
+folder_path = "C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Hashimoto Resarch\Progress 2\Results\20250114~ 予備実験4\20250203_Y410\tapping_data";
 
 %% 全ての打鍵解析を行う
 

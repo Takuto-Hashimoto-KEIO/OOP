@@ -28,48 +28,55 @@ classdef GenerateAramakiPlot
             %GENERATEARAMAKIPLOT このクラスのインスタンスを作成
         end
 
-        % GenerateAramakiPlotの全機能を一貫して実行
-        function run_generate_aramaki_plot(obj, folder_path)
-
-            % フォルダ内の該当するデータファイルを全て読み込む
-            files = dir(fullfile(folder_path, 'Block_Result_*.mat'));
+        function run_generate_aramaki_plot(obj, path)
+            % 指定されたパスがフォルダかファイルかを判定
+            if isfolder(path)
+                % フォルダ内の該当するデータファイルを全て取得
+                files = dir(fullfile(path, 'Block_Result_*.mat'));
+                file_paths = fullfile(path, {files.name});
+            elseif isfile(path) && endsWith(path, '.mat')
+                % 単一ファイル指定の場合
+                file_paths = {path};
+            else
+                error('Invalid path: must be a folder or a .mat file.');
+            end
 
             % ファイルごとに処理を実行
-            for file_idx = 1:length(files)
-                obj = load_data(obj, folder_path, files, file_idx);
+            for file_idx = 1:length(file_paths)
+                obj = load_data(obj, file_paths{file_idx});
                 obj = calculate_corrected_pressed_times(obj);
                 obj = calculate_acceptance_window(obj);
-                plot_data(obj, folder_path);
+                plot_data(obj, fileparts(file_paths{file_idx})); % フォルダパスを渡す
 
-                % % 1blockの打鍵もつれの要約を出力 20250129 作成
+                % 1blockの打鍵もつれの要約を出力
                 file_summary = VisualizeKeystrokeError(obj);
-                file_summary.run_visualize_keystroke_error(folder_path);
+                file_summary.run_visualize_keystroke_error(fileparts(file_paths{file_idx}));
             end
         end
     end
 
     methods (Access = private)
         % データのロードと格納
-        function obj = load_data(obj, folder_path, files, file_idx)
-
-            % ファイル名を取り出す
-            filename = files(file_idx).name;
+        function obj = load_data(obj, file_path)
+            % ファイル名を取得
+            [~, filename] = fileparts(file_path);
 
             % blockの種類を抽出
             pattern = 'Block_Result_.*?_(.*?)_block\d+_\d+';
             obj.block_type = regexp(filename, pattern, 'tokens', 'once');
             if ~isempty(obj.block_type)
-                obj.block_type = obj.block_type{1}; % セル配列から文字列を取得
+                obj.block_type = obj.block_type{1};
             else
-                obj.block_type = ''; % パターンに一致しない場合の処理
+                obj.block_type = '';
             end
 
-            % ファイル名とblockの種類を表示（デバッグ用、必要なら削除）
+            % ファイル名とblockの種類を表示（デバッグ用）
             fprintf('Processing file: %s, Block type: %s\n', filename, obj.block_type);
 
-            data = load(fullfile(folder_path, files(file_idx).name));
+            % データの読み込み
+            data = load(file_path);
 
-            % データを抽出
+            % データをオブジェクトのプロパティに格納
             obj.participant_name = data.num_participant;
             obj.num_block = data.num_block;
             block = data.block;
@@ -81,12 +88,11 @@ classdef GenerateAramakiPlot
             obj.judge = block.judge;
 
             % trial数を取得
-            % obj.num_trials = 2; % 一時的に使用
-            obj.num_trials = block.num_last_trial; % 本来はこれを使用
+            obj.num_trials = block.num_last_trial;
 
             % キーの種類数を取得
             obj.num_keys = size(obj.beep_times_keys, 3);
-            
+
             % 打鍵間隔の推移を取得
             obj.tap_intervals = block.tap_intervals;
 
@@ -95,7 +101,7 @@ classdef GenerateAramakiPlot
             obj.acceptance_end = NaN(obj.num_trials, max(obj.keystrokes.num_loops), obj.num_keys);
 
             % 補正後のキー押し下し時刻の初期化
-            obj.corrected_pressed_times = NaN(obj.num_trials, obj.num_keys, 2000); % 初期化
+            obj.corrected_pressed_times = NaN(obj.num_trials, obj.num_keys, 2000);
         end
 
         function obj = calculate_corrected_pressed_times(obj)
@@ -105,10 +111,11 @@ classdef GenerateAramakiPlot
                     pressed_times_key = pressed_times_key(pressed_times_key > 0); % 0未満は無視
 
                     % task開始時のビープ音の時刻を基準に時刻を補正
-                    obj.corrected_pressed_times(trial_idx, key_idx, 1:size(pressed_times_key)) = pressed_times_key - obj.beep_times_keys(trial_idx, 1, 1);
+                    obj.corrected_pressed_times(trial_idx, key_idx, 1:numel(pressed_times_key)) = pressed_times_key - obj.beep_times_keys(trial_idx, 1, 1);
                     % corrected_pressed_times = corrected_pressed_times(corrected_pressed_times > - tap_interval(trial_idx)); % 異常な負の打鍵時刻を消去
                 end
             end
+            obj.corrected_pressed_times(obj.corrected_pressed_times == 0) = NaN; % ちょうど0の要素を削除
         end
 
         function obj = calculate_acceptance_window(obj)
@@ -205,7 +212,8 @@ classdef GenerateAramakiPlot
                 % 押し下し～離鍵時　全ての打鍵データをプロットする場合
                 for key_idx = 1:obj.num_keys
                     % キーごとにマーカースタイルを設定し、プロット
-                    plot(squeeze(obj.corrected_pressed_times(trial_idx, key_idx, :)), key_positions(key_idx) * ones(1, length(obj.corrected_pressed_times)), ...
+                    plot_data = rmmissing(squeeze(obj.corrected_pressed_times(trial_idx, key_idx, :))); % NaN を除外
+                    plot(plot_data, key_positions(key_idx) * ones(1, length(plot_data)), ...
                         'o', 'MarkerFaceColor', colors4{key_idx}, 'Color', colors4{key_idx}, ...
                         'DisplayName', [keys{key_idx} ' (' keys_legend{key_idx} ')']);
                 end
