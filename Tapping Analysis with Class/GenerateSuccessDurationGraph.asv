@@ -25,29 +25,60 @@ classdef GenerateSuccessDurationGraph
             file_list = dir(fullfile(folder_path, 'Block_Result_*.mat'));
 
             % 成功持続時間の全データを格納する行列を定義
-            first_file_data = load(fullfile(file_list(1).folder, file_list(1).name));
-            obj.num_trials = size(first_file_data.block.success_duration, 1); % トライアル数を取得するため、最初のファイルを読み込む
-            obj.all_durations = NaN(obj.num_trials, length(file_list));  % 行: トライアル、列: ブロック
-            obj.all_positions = repmat(1:length(file_list), obj.num_trials, 1);  % ブロック番号を繰り返す
-            obj.Hz_list = first_file_data.block.tap_interval_list; % 測定で使用された打鍵速度（Hz）のリスト
-            obj.Hz = NaN(obj.num_trials, length(file_list)); % 各trialの打鍵速度（Hz）
+            % 初期化を行う
+            max_trials = 0;  % 最大トライアル数を記録
+            for file_idx = 1:length(file_list)
+                temp_data = load(fullfile(file_list(file_idx).folder, file_list(file_idx).name));
+                max_trials = max(max_trials, temp_data.block.num_last_trial);  % 最大値を更新
+            end
+            obj.all_durations = NaN(max_trials, length(file_list));  % 最大トライアル数で初期化
+            obj.all_positions = repmat(1:length(file_list), max_trials, 1);  % ブロック番号を繰り返す
+            obj.Hz = NaN(max_trials, length(file_list)); % 各trialの打鍵速度（Hz）
+
+            % 横軸ラベル用のリストを作成し、対応するインデックスを記録
+            x_labels = strings(1, length(file_list));
+            file_indices = 1:length(file_list);  % 元のファイル順序を保持
+            for file_idx = 1:length(file_list)
+                file_name = file_list(file_idx).name;
+
+                % 正規表現でblockの種類とblock番号を抽出
+                match = regexp(file_name, 'Block_Result_.*_(?<blockType>.*?)_block(?<blockNum>\d+)_.*', 'names');
+                if ~isempty(match)
+                    x_labels(file_idx) = sprintf('%s_%s', match.blockType, match.blockNum);
+                else
+                    x_labels(file_idx) = 'Unknown';
+                end
+            end
+
+            % ラベルの並び替えロジック
+            m_blocks = startsWith(x_labels, "M_");  % M_で始まるラベル
+            p_blocks = startsWith(x_labels, "P_");  % P_で始まるラベル
+            other_blocks = ~(m_blocks | p_blocks);  % その他のラベル
+
+            % 並び替え: その他のラベル -> P_ラベル -> M_ラベル
+            sorted_indices = [file_indices(other_blocks), file_indices(p_blocks), file_indices(m_blocks)];
+            file_list = file_list(sorted_indices);  % ファイルリストを並び替え
+            x_labels = x_labels(sorted_indices);   % ラベルも並び替え
+
+            % 並び替えた順序に基づいてall_positionsを更新
+            obj.all_positions = repmat(1:length(sorted_indices), size(obj.all_positions, 1), 1);
 
             % ファイルごとに処理を実行
             for file_idx = 1:length(file_list)
-                [obj, file_name] = load_data(obj, file_list, file_idx);
+                obj = load_data(obj, file_list, file_idx);
             end
 
             % プロットを作成してフォルダに保存
-            plot_boxplot(obj, folder_path);
+            output_folder = plot_boxplot(obj, folder_path, x_labels);
 
             % 打鍵成功持続時間のblock平均を計算し、CSVファイルに出力
-            calculate_block_averages(obj, file_name, folder_path)
+            calculate_block_averages(obj, output_folder)
         end
     end
 
     methods (Access = private)
         % データのロードと格納
-        function [obj, file_name] = load_data(obj, file_list, file_idx)
+        function obj = load_data(obj, file_list, file_idx)
 
             % ファイルのフルパスを取得
             file_name = file_list(file_idx).name;
@@ -58,15 +89,23 @@ classdef GenerateSuccessDurationGraph
 
             obj.participant_name = data.num_participant;
             obj.success_duration = data.block.success_duration;
-            obj.num_trials = size(obj.success_duration, 1);
+            obj.num_trials = data.block.num_last_trial;  % ファイル固有のトライアル数を取
+            obj.Hz_list = 1 ./ data.block.tap_interval_list; % 測定で使用された打鍵速度（Hz）のリストを取得
 
-            for trial_idx = 1:3 %%% [検証用]のために3にしている、本来はobj.num_trials
+            % 配列のリサイズ（不足があれば拡張）
+            if size(obj.all_durations, 1) < obj.num_trials
+                extra_rows = obj.num_trials - size(obj.all_durations, 1);
+                obj.all_durations = [obj.all_durations; NaN(extra_rows, size(obj.all_durations, 2))];
+                obj.Hz = [obj.Hz; NaN(extra_rows, size(obj.Hz, 2))];
+            end
+
+            for trial_idx = 1:obj.num_trials %%% [検証用]のために6にしている、本来はobj.num_trials
                 obj.all_durations(trial_idx, file_idx) = obj.success_duration(trial_idx);
                 obj.Hz(trial_idx, file_idx) = obj.Hz_list(data.block.interval_index_recorder(trial_idx));
             end
         end
 
-        function plot_boxplot(obj, folder_path)
+        function output_folder = plot_boxplot(obj, folder_path, x_labels)
             figure;
             hold on;
 
@@ -75,9 +114,10 @@ classdef GenerateSuccessDurationGraph
                 error('The number of elements in all_durations and all_positions must be the same.');
             end
 
-            % all_durationsとall_positionsをベクトル形式に変換
-            obj.all_durations = obj.all_durations(:);  % 縦ベクトルに変換
-            obj.all_positions = obj.all_positions(:);  % 縦ベクトルに変換
+            % NaNを含む要素を削除してベクトル化
+            valid_idx = ~isnan(obj.all_durations);
+            obj.all_durations = obj.all_durations(valid_idx);
+            obj.all_positions = obj.all_positions(valid_idx);
 
             % 有効なデータがあるか確認
             if isempty(obj.all_durations) || isempty(obj.all_positions)
@@ -88,7 +128,6 @@ classdef GenerateSuccessDurationGraph
             nan_idx = isnan(obj.all_durations);
             obj.all_durations(nan_idx) = [];
             obj.all_positions(nan_idx) = [];
-
 
             % 箱ひげ図の作成
             h = boxplot(obj.all_durations, obj.all_positions, 'Widths', 0.5, 'Colors', 'b');
@@ -159,16 +198,30 @@ classdef GenerateSuccessDurationGraph
                 end
             end
 
-
             % 縦軸の範囲を固定
             ylim([-2, max(obj.all_durations)]);  % 縦軸の最小値を-2に設定
 
             % グラフの設定
-            xlabel('Block', 'FontSize', 14);
+            set(gca, 'XTickLabel', x_labels, 'XTickLabelRotation', 45); % 横軸ラベルを適用
             ylabel('Success Duration (seconds)', 'FontSize', 14);
-            title(['Subject ' obj.participant_name ' trial ' num2str(trial_idx)], ...
-                'FontSize', 16);
+            title(['Subject ' obj.participant_name '  Keystroke Success Duration by Block'], 'FontSize', 16);
             box on;
+
+            % 各ブロックごとのHz最頻値を計算し、テキストとして表示
+            unique_blocks = unique(obj.all_positions);
+            for block_idx = unique_blocks'
+                block_Hz = obj.Hz(:, block_idx);  % 該当ブロックのHzデータを取得
+                mode_Hz = mode(block_Hz(~isnan(block_Hz)));  % NaNを除いた最頻値を計算
+
+                % 有効数字2桁に変換
+                mode_Hz_sig2 = round(mode_Hz, 1 - floor(log10(abs(mode_Hz))));
+
+                % 少数第一位まで表示するようにフォーマットを調整
+                text(block_idx, -0.5, sprintf('%.1f Hz', mode_Hz_sig2), ...
+                    'HorizontalAlignment', 'center', ...
+                    'FontSize', 12, ...
+                    'VerticalAlignment', 'top');  % 横軸ラベルの上に表示
+            end
 
             fontsize(36,"points")
             hold off;
@@ -179,25 +232,22 @@ classdef GenerateSuccessDurationGraph
                 mkdir(output_folder);
             end
 
-            % 箱ひげ図をMATLAB Figure (.fig)形式で保存
-            savefig(fullfile(output_folder, ['subject_' obj.participant_name '_success_durations_graph.fig']));
+            % 箱ひげ図を保存
+            fig_filename = sprintf(['subject_' obj.participant_name '_success_durations_graph']);
 
-            % 各ブロックごとのHz最頻値を計算し、テキストとして表示
-            unique_blocks = unique(obj.all_positions);
-            for block_idx = unique_blocks'
-                block_Hz = obj.Hz(:, block_idx);  % 該当ブロックのHzデータを取得
-                mode_Hz = mode(block_Hz(~isnan(block_Hz)));  % NaNを除いた最頻値を計算
-                text(block_idx, -0.5, sprintf('%.1f Hz', mode_Hz), 'HorizontalAlignment', 'center', 'FontSize', 12, 'VerticalAlignment', 'top');  % 横軸ラベルの上に表示
-            end
-            fontsize(36,"points")
+            % .figファイルとして保存
+            savefig([output_folder fig_filename '.fig']);
+
+            % .jpgファイルとして保存
+            saveas(gcf, [output_folder, fig_filename '.jpg']);
         end
 
-        function calculate_block_averages(obj, file_name, folder_path)
+        function calculate_block_averages(obj, output_folder)
             % NaNを無視して、各ブロックのsuccess_durationの平均値を計算
             block_mean = nanmean(obj.all_durations, 1);
 
             % CSVファイルの保存場所をfolder_pathに指定
-            csv_filename = fullfile(folder_path, [file_name, 'subject_' obj.participant_name '_success_durations_block_average.csv']);
+            csv_filename = fullfile(output_folder, ['subject_' obj.participant_name '_success_durations_block_average.csv']);
 
             % writematrixを使用してCSVファイルに保存
             writematrix(block_mean, csv_filename);

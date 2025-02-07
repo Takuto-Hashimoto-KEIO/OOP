@@ -2,13 +2,14 @@ clear
 close all
 
 %% 読み込むフォルダパスを指定
-folder_path = "C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Hashimoto Resarch\Progress 2\Results\20250114~ 予備実験4\20250203_Y410\tapping_data";
+folder_path = "C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Hashimoto Resarch\Progress 2\Results\20250114~ 予備実験4\20250206_Y413\tapping_data";
 
-%% 全ての打鍵解析を行う
+% 全ての打鍵解析を行う
 
 % 各trialに1枚ずつの打鍵の時系列データのグラフを作成
 aramaki_plot = GenerateAramakiPlot();
 aramaki_plot.run_generate_aramaki_plot(folder_path);
+
 
 % 全blockで1枚の打鍵成功持続時間のtrial分布の箱ひげ図を作成
 S_D_plot = GenerateSuccessDurationGraph();

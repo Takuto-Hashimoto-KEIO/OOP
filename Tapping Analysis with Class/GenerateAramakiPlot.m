@@ -132,7 +132,7 @@ classdef GenerateAramakiPlot
 
                         % window_shiftを算出
                         if obj.block_type == 'P'
-                            window_shift = obj.window_delimiters.window_shift_rates(ceil(trial_idx/4)) * obj.tap_intervals(trial_idx)/2;
+                            window_shift = obj.window_delimiters.window_shift_rates(ceil(trial_idx/5)) * obj.tap_intervals(trial_idx)/2;
                         elseif obj.block_type == 'M'
                             window_shift = obj.window_delimiters.window_shift_rate * obj.tap_intervals(trial_idx)/2;
                         else
@@ -271,7 +271,19 @@ classdef GenerateAramakiPlot
                 end
 
                 % MATLAB Figure (.fig)形式で保存パスを設定して保存
-                savefig(fullfile(output_folder, ['subject_' obj.participant_name '_' obj.block_type '_block_' obj.num_block '_trial_' num2str(trial_idx) '_graph.fig']));
+                fig_filename = fullfile(output_folder, ['subject_' obj.participant_name '_' obj.block_type '_block_' obj.num_block '_trial_' num2str(trial_idx) '_graph']);
+
+                % .figファイルとして保存
+                savefig([fig_filename '.fig']);
+
+                fig = gcf;
+                fig.Units = 'normalized';
+                fig.OuterPosition = [0 0 1 1]; % 全画面表示
+
+                drawnow; % 画面更新を強制
+                pause(0.1);
+                % .jpgファイルとして保存
+                saveas(gcf, [fig_filename '.jpg']);
             end
         end
     end

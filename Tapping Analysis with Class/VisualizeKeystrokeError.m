@@ -167,12 +167,25 @@ classdef VisualizeKeystrokeError
 
             fontsize(36,"points")
             hold off;
-            
+
             output_folder = fullfile(folder_path, 'Keystroke_Block_Summary');
             if ~exist(output_folder, 'dir')
                 mkdir(output_folder);
             end
-            savefig(fullfile(output_folder, ['subject_' obj.participant_name '_block_summary_' obj.block_type '_block_' num2str(obj.num_block) '.fig']));
+
+            fig_filename = fullfile(output_folder, ['subject_' obj.participant_name '_block_summary_' obj.block_type '_block_' num2str(obj.num_block)]);
+
+            % .figファイルとして保存
+            savefig([fig_filename '.fig']);
+
+            fig = gcf;
+            fig.Units = 'normalized';
+            fig.OuterPosition = [0 0 1 1]; % 全画面表示
+
+            drawnow; % 画面更新を強制
+            pause(0.1);
+            % .jpgファイルとして保存
+            saveas(gcf, [fig_filename '.jpg']);
         end
     end
 

@@ -232,8 +232,20 @@ classdef GenerateSuccessDurationGraph
                 mkdir(output_folder);
             end
 
-            % 箱ひげ図をMATLAB Figure (.fig)形式で保存
-            savefig(fullfile(output_folder, ['subject_' obj.participant_name '_success_durations_graph.fig']));
+            % 保存ファイル名を定義
+            fig_filename_fig = fullfile(output_folder, ['subject_' obj.participant_name '_success_duration.fig']);
+            fig_filename_jpg = fullfile(output_folder, ['subject_' obj.participant_name '_success_duration.jpg']);
+
+            % 保存処理を実行
+            saveas(gcf, fig_filename_fig, 'fig');  % .fig形式で保存
+
+            fig = gcf;
+            fig.Units = 'normalized';
+            fig.OuterPosition = [0 0 1 1]; % 全画面表示
+
+            drawnow; % 画面更新を強制
+            pause(0.1);
+            saveas(gcf, fig_filename_jpg, 'jpg');  % .jpg形式で保存
         end
 
         function calculate_block_averages(obj, output_folder)

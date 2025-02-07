@@ -35,6 +35,12 @@ classdef GenerateSpeedLevelGraph
                 end
             end
 
+            % 条件に合うファイルがない場合、処理を終了
+            if isempty(filtered_files)
+                fprintf('条件に合うファイルが見つかりません。GenerateSpeedLevelGraphの処理を終了します。\n');
+                return;
+            end
+
             obj.block_speed_level = [];
 
             % ファイルごとに処理を実行
@@ -54,8 +60,20 @@ classdef GenerateSpeedLevelGraph
                 mkdir(output_folder);
             end
 
-            % 箱ひげ図をMATLAB Figure (.fig)形式で保存
-            savefig(fullfile(output_folder, 'Main_block_speed_level_shift._R.fig'));
+            % 保存ファイル名を定義
+            fig_filename_fig = fullfile(output_folder, ['subject_' obj.participant_name '_success_duration.fig']);
+            fig_filename_jpg = fullfile(output_folder, ['subject_' obj.participant_name '_success_duration.jpg']);
+
+            % 保存処理を実行
+            saveas(gcf, fig_filename_fig, 'fig');  % .fig形式で保存
+
+            fig = gcf;
+            fig.Units = 'normalized';
+            fig.OuterPosition = [0 0 1 1]; % 全画面表示
+
+            drawnow; % 画面更新を強制
+            pause(0.1);
+            saveas(gcf, fig_filename_jpg, 'jpg');  % .jpg形式で保存
         end
     end
 

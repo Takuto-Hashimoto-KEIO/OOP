@@ -1,7 +1,7 @@
 % 既存のMATファイルを編集して保存するスクリプト
 
 % 1. ファイル名を指定
-filename = "D:\Documents\MATLAB\hashimoto2024\20250114 codes with Class\Measurements\Measurements_Codes_with_Class\Results\20250130_Y408\Block_Result_Y408_M_block4_20250130_142835.mat";  % 必要なら新しいファイル名を指定（同じにすると上書き）
+filename = "C:\Users\takut\OneDrive - keio.jp\牛馬研 M1~\修論研究\toolbox\Hashimoto Resarch\Progress 2\Results\20250114~ 予備実験4\20250206_Y413\tapping_data\Block_Result_Y413_M_block5_20250206_160905.mat";  % 必要なら新しいファイル名を指定（同じにすると上書き）
 
 % 2. ファイルを読み込む
 data = load(filename);
