@@ -46,7 +46,7 @@ classdef GenerateAramakiPlot
                 obj = load_data(obj, file_paths{file_idx});
                 obj = calculate_corrected_pressed_times(obj);
                 obj = calculate_acceptance_window(obj);
-                plot_data(obj, fileparts(file_paths{file_idx})); % フォルダパスを渡す
+                % plot_data(obj, fileparts(file_paths{file_idx})); % フォルダパスを渡す
 
                 % 1blockの打鍵もつれの要約を出力
                 file_summary = VisualizeKeystrokeError(obj);
@@ -180,7 +180,6 @@ classdef GenerateAramakiPlot
                         xline(t, '--', 'Color', colors4{key}, 'HandleVisibility', 'off'); % 点線の垂線（'off'で凡例から除外）
                     end
                 end
-
 
                 % 各打鍵をプロット
 

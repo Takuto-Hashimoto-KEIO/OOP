@@ -5,28 +5,30 @@ classdef SortMissedKeystrokes
     properties
         % もともと読み込むファイルに存在するプロパティ
         participant_name
-
         num_block
 
         num_trials
         num_keys
         tap_intervals
-
         beep_times_keys
         keystrokes
         pressed_times
-        window_delimiters
+        window_shift_rate
         judge
-        tap_interval_list
+        success_duration
 
         % このクラス独自で設定するプロパティ
-        block_speed_level
+        speed_levels
         mode_speed_level
         num_target_trials
-        
+
         corrected_pressed_times
         acceptance_start
         acceptance_end
+        num_all_trials
+
+        classified_keystrokes
+        keystrokes_labels
     end
 
     methods
@@ -54,17 +56,17 @@ classdef SortMissedKeystrokes
                 end
             end
 
-            obj.block_speed_level = NaN(length(filtered_files),20);
-
             % ファイルごとに処理を実行
             for file_idx = 1:length(filtered_files)
-                obj = load_data(obj, filtered_files, file_idx);
-                % obj = calculate_corrected_pressed_times(obj);
-                % obj = calculate_acceptance_window(obj);
+                obj = load_data(obj, filtered_files, file_idx); % 全データの格納
             end
 
-            obj = load_target_data(obj);
-            draw_plot(obj); % plotは別のクラスで行う予定
+            obj = process_data(obj); % 必要な値や配列の算出
+            obj = load_target_data(obj); % 最頻の打鍵速度で実行したtrialのデータだけを取得
+            obj = sort_target_data(obj); % 打鍵成功持続時間で並び替え
+            plot = PlotMissedKeystrokes(); % plotは別のクラスで行う
+            plot = plot.run_plot_missed_keystrokes(obj, folder_path);
+            save_data(obj, plot);
         end
     end
 
@@ -76,83 +78,56 @@ classdef SortMissedKeystrokes
             full_file_path = fullfile(file_list(file_idx).folder, file_name);
 
             % ファイル名を表示（デバッグ用）
-            fprintf('Processing file: %s\n', file_name);
+            fprintf('loading file: %s\n', file_name);
 
             % ファイルを読み込む
             data = load(full_file_path);
             obj.participant_name = data.num_participant;
-
             block = data.block;  % 読み込んだデータからblockを取得
 
             % 既存のデータがある場合、1次元目を拡張する
             if file_idx == 1
+                obj.num_trials = block.num_last_trial; % このblockのtrial数を取得
+                obj.keystrokes = block.keystrokes;
+                obj.window_shift_rate = block.window_delimiters.window_shift_rate;
+
+                obj.speed_levels = block.interval_index_recorder;
+                obj.tap_intervals = block.tap_intervals; % 打鍵間隔の推移を取得
                 obj.beep_times_keys = block.beep_times_keys;
-                obj.keystrokes = block.keystrokes;
                 obj.pressed_times = block.pressed_times;
-                obj.window_delimiters = block.window_delimiters;
+                obj.acceptance_start = block.window_delimiters.acception_window_start;
+                obj.acceptance_end = block.window_delimiters.acception_window_end;
                 obj.judge = block.judge;
+                obj.success_duration = block.success_duration;
+
+                obj.num_keys = size(obj.beep_times_keys, 3); % キーの種類数を取得
             else
-
-                %% ここから編集2/3
+                % 全てのblockのデータをtrial方向に連結して格納
+                obj.speed_levels = cat(1, obj.speed_levels, block.interval_index_recorder);
+                obj.tap_intervals = cat(1, obj.tap_intervals, block.tap_intervals);
                 obj.beep_times_keys = cat(1, obj.beep_times_keys, block.beep_times_keys);
-                obj.keystrokes = block.keystrokes;
-                obj.pressed_times = block.pressed_times;
-                obj.window_delimiters = block.window_delimiters;
-                obj.judge = block.judge;
+                obj.keystrokes.num_loops = cat(1, obj.keystrokes.num_loops, block.keystrokes.num_loops);
+                obj.keystrokes.num_keys = cat(1, obj.keystrokes.num_keys, block.keystrokes.num_keys);
+                obj.keystrokes.num_keystroke_sections = cat(1, obj.keystrokes.num_keystroke_sections, block.keystrokes.num_keystroke_sections);
+                obj.pressed_times = cat(1, obj.pressed_times, block.pressed_times);
+                obj.acceptance_start = cat(1, obj.acceptance_start, block.window_delimiters.acception_window_start);
+                obj.acceptance_end = cat(1, obj.acceptance_end, block.window_delimiters.acception_window_end);
+                obj.judge = cat(1, obj.judge, block.judge);
+                obj.success_duration = cat(1, obj.success_duration, block.success_duration);
             end
-
-            % このblockのtrial数を取得
-            obj.num_trials = block.num_last_trial;
-
-            % キーの種類数を取得
-            obj.num_keys = size(obj.beep_times_keys, 3);
-
-            % 打鍵間隔の推移を取得
-            obj.tap_intervals = block.tap_intervals;
-
-            % 打鍵判定区間の初期化
-            obj.acceptance_start = NaN(obj.num_trials, max(obj.keystrokes.num_loops), obj.num_keys);
-            obj.acceptance_end = NaN(obj.num_trials, max(obj.keystrokes.num_loops), obj.num_keys);
-
-            % 補正後のキー押し下し時刻の初期化
-            obj.corrected_pressed_times = NaN(obj.num_trials, obj.num_keys, 2000);
-
-            % 速度レベルを格納する
-            trial_speed_level = block.interval_index_recorder;
-            obj.block_speed_level(file_idx, :) = trial_speed_level;
-        end
-        
-        % 最頻の打鍵速度で実行したtrialのデータを取得
-        function obj = load_target_data(obj)
-            % 該当trialの算出
-            obj.mode_speed_level = mode(obj.block_speed_level, 'all');
-            obj.num_target_trials = find(obj.block_speed_level == obj.mode_speed_level); % main block全体を100trialとしたときの該当trialの番号
-            obj.num_trials = length(obj.num_target_trials);
-
-            if obj.num_trials < 30
-                fprintf("Warning! target_data is only %d trials", obj.num_trials)
-            end
-
-            % 全target_trialsのデータを一つにまとめる
-
-
+            obj.num_all_trials = numel(file_list)*obj.num_trials;
         end
 
-function obj = calculate_corrected_pressed_times(obj)
-            for trial_idx = 1:obj.num_trials
-                for key_idx = 1:obj.num_keys
-                    pressed_times_key = squeeze(obj.pressed_times(trial_idx, key_idx, :)); %%% 要観察
-                    pressed_times_key = pressed_times_key(pressed_times_key > 0); % 0未満は無視
-
-                    % task開始時のビープ音の時刻を基準に時刻を補正
-                    obj.corrected_pressed_times(trial_idx, key_idx, 1:size(pressed_times_key)) = pressed_times_key - obj.beep_times_keys(trial_idx, 1, 1);
-                    % corrected_pressed_times = corrected_pressed_times(corrected_pressed_times > - tap_interval(trial_idx)); % 異常な負の打鍵時刻を消去
-                end
-            end
+        % 必要な値や配列の算出
+        function obj = process_data(obj)
+            obj = calculate_acceptance_window(obj);
+            obj = calculate_corrected_pressed_times(obj);
+            obj = classify_keystrokes(obj);  % 全打鍵の分類[打鍵成功、打鍵遅れ、打鍵先行、打鍵飛ばし]
+            obj = reject_data(obj); % skippedが全打鍵の20%以上を占めるtrialをreject
         end
 
         function obj = calculate_acceptance_window(obj)
-            for trial_idx = 1:obj.num_trials
+            for trial_idx = 1:obj.num_all_trials
                 for loop = 1:obj.keystrokes.num_loops(trial_idx)
 
                     % 打鍵受付範囲を塗りつぶしで表示
@@ -163,26 +138,244 @@ function obj = calculate_corrected_pressed_times(obj)
                             break;
                         end
 
-                        % window_shiftを算出
-                        if obj.block_type == 'P'
-                            window_shift = obj.window_delimiters.window_shift_rates(ceil(trial_idx/4)) * obj.tap_intervals(trial_idx)/2;
-                        elseif obj.block_type == 'M'
-                            window_shift = obj.window_delimiters.window_shift_rate * obj.tap_intervals(trial_idx)/2;
-                        else
-                            window_shift = 0;
-                        end
+                        window_shift = obj.window_shift_rate * obj.tap_intervals(trial_idx)/2;
 
                         % ビープ音の提示時刻を中心に決定した打鍵受付区間 これらをtask開始時のビープ音の時刻を基準に補正
-                        obj.acceptance_start(trial_idx, loop, key) = obj.window_delimiters.acception_window_start(trial_idx, loop, key) + window_shift;
-                        obj.acceptance_end(trial_idx, loop, key) = obj.window_delimiters.acception_window_end(trial_idx, loop, key) + window_shift;
+                        obj.acceptance_start(trial_idx, loop, key) = obj.acceptance_start(trial_idx, loop, key) + window_shift;
+                        obj.acceptance_end(trial_idx, loop, key) = obj.acceptance_end(trial_idx, loop, key) + window_shift;
                         obj.acceptance_start(trial_idx, loop, key) = obj.acceptance_start(trial_idx, loop, key) - obj.beep_times_keys(trial_idx, 1, 1);
                         obj.acceptance_end(trial_idx, loop, key) = obj.acceptance_end(trial_idx, loop, key) - obj.beep_times_keys(trial_idx, 1, 1);
                     end
                 end
             end
+            [obj.acceptance_start, obj.acceptance_end] = dimensional_reducer(obj);
         end
 
-        function draw_plot(obj)
+        function obj = calculate_corrected_pressed_times(obj)
+            obj.corrected_pressed_times = NaN(obj.num_all_trials, obj.num_keys, 2000); % 補正後のキー押し下し時刻の初期化
+            for trial_idx = 1:obj.num_all_trials
+                for key_idx = 1:obj.num_keys
+                    pressed_times_key = squeeze(obj.pressed_times(trial_idx, key_idx, :));
+                    pressed_times_key = pressed_times_key(pressed_times_key > 0); % 0未満は無視
+
+                    % task開始時のビープ音の時刻を基準に時刻を補正
+                    obj.corrected_pressed_times(trial_idx, key_idx, 1:numel(pressed_times_key)) = pressed_times_key - obj.beep_times_keys(trial_idx, 1, 1);
+                end
+            end
+            obj.corrected_pressed_times(obj.corrected_pressed_times == 0) = NaN; % ちょうど0の要素を削除
+        end
+
+        % 全打鍵の分類[打鍵成功、打鍵遅れ、打鍵先行、打鍵飛ばし]
+        function obj = classify_keystrokes(obj)
+            obj.classified_keystrokes = nan(size(obj.judge)); % 打鍵分類を格納する配列
+            obj.keystrokes_labels = {'Success', 'Delayed', 'Early', 'Skipped', 'Delayed & Early'}; % classified_keystrokesの配列に格納された数と打鍵分類の対応関係
+
+            for trial_idx = 1:obj.num_all_trials
+                % このtrialでの打鍵判定区間のリストを格納
+                a_starts = obj.acceptance_start(trial_idx, :);
+                a_ends = obj.acceptance_end(trial_idx, :);
+
+                t_n = cell(obj.keystrokes.num_keystroke_sections(trial_idx),1); % n打鍵目の押し下し開始時刻
+                all_press_per_key = cell(obj.num_keys,1);
+
+                % 1打鍵判定区間ごとにプロットする押し下し時刻などの準備
+                for loop_idx = 1:obj.keystrokes.num_loops(trial_idx)
+                    for key_idx = 1:obj.num_keys
+
+                        % 打鍵番号
+                        keystorke_idx = 4*(loop_idx - 1) + key_idx;
+
+                        % 到達した打鍵判定区間以降は、obj.judgeにNaNが格納されているため処理を行わない
+                        if obj.keystrokes.num_keystroke_sections(trial_idx) < keystorke_idx
+                            break;
+                        end
+
+                        % 今回のキーを押した時刻を全て取得
+                        all_press_per_key{key_idx} = squeeze(obj.corrected_pressed_times(trial_idx, key_idx, :));
+                        all_press_per_key{key_idx} = all_press_per_key{key_idx}(all_press_per_key{key_idx} ~= 0); % ちょうど0の要素を削除
+
+                        % 今回の打鍵判定区間の中にあるキー押し下し時刻だけを格納
+                        filtered_press_times = all_press_per_key{key_idx};
+                        t_n{keystorke_idx} = filtered_press_times(filtered_press_times >= a_starts(keystorke_idx) & filtered_press_times <= a_ends(keystorke_idx));
+                    end
+                end
+
+
+                % 1打鍵判定区間ごとに打鍵を分類
+                for loop_idx = 1:obj.keystrokes.num_loops(trial_idx)
+                    for key_idx = 1:obj.num_keys
+
+                        keystorke_idx = 4*(loop_idx - 1) + key_idx; % 打鍵番号
+
+                        % 到達した打鍵判定区間以降は、obj.judgeにNaNが格納されているため処理を行わない
+                        if obj.keystrokes.num_keystroke_sections(trial_idx) < keystorke_idx
+                            break;
+                        end
+
+                        all_press_per_key_idx = all_press_per_key{key_idx};
+
+                        % 最初と最後の打鍵判定区間についてはプロットしない（配列の仕様の都合上）
+                        if keystorke_idx ~= 1 && keystorke_idx ~= obj.keystrokes.num_keystroke_sections(trial_idx)
+                            % 打鍵を1打鍵判定区間ごとに分類してプロット（キー押し下し開始時刻のみ）
+                            if obj.judge(trial_idx, keystorke_idx) == 1 % 打鍵成功
+                                obj.classified_keystrokes(trial_idx, keystorke_idx) = 1;
+                                % plot(t_n{keystorke_idx}, trial_idx * ones(1, size(t_n{keystorke_idx}, 1)), 'o', 'Color', colors{1}, 'MarkerFaceColor', colors{1});
+
+                                % 注意：成功判定の場合は、その前後の押し下しはプロットされない
+                            elseif any(a_ends(keystorke_idx) < all_press_per_key_idx & all_press_per_key_idx <= a_ends(keystorke_idx + 1)) % 打鍵遅れ
+                                late_presses = all_press_per_key_idx(a_ends(keystorke_idx) <  all_press_per_key_idx & all_press_per_key_idx <= a_ends(keystorke_idx + 1));
+                                obj.classified_keystrokes(trial_idx, keystorke_idx) = 2;
+                                % fill([a_starts(keystorke_idx), a_ends(keystorke_idx), a_ends(keystorke_idx), a_starts(keystorke_idx)], ...
+                                %     [trial_idx+0.5, trial_idx+0.5, trial_idx-0.5, trial_idx-0.5], ...
+                                %     colors{2}, 'EdgeColor', 'none', 'FaceAlpha', 0.2, 'HandleVisibility', 'off');
+                                % plot(late_presses, trial_idx * ones(1, size(late_presses, 1)), 'o', 'Color', colors{2}, 'MarkerFaceColor', colors{2});
+
+                                if any(a_starts(keystorke_idx - 1) <= all_press_per_key_idx & all_press_per_key_idx < a_starts(keystorke_idx)) % 打鍵先行
+                                    fast_presses = all_press_per_key_idx(a_starts(keystorke_idx - 1) <= all_press_per_key_idx & all_press_per_key_idx < a_starts(keystorke_idx));
+                                    if obj.classified_keystrokes(trial_idx, keystorke_idx) == 2
+                                        obj.classified_keystrokes(trial_idx, keystorke_idx) = 5; % 打鍵遅れかつ打鍵先行
+                                    else
+                                        obj.classified_keystrokes(trial_idx, keystorke_idx) = 3;
+                                    end
+                                    % fill([a_starts(keystorke_idx), a_ends(keystorke_idx), a_ends(keystorke_idx), a_starts(keystorke_idx)], ...
+                                    %     [trial_idx+0.5, trial_idx+0.5, trial_idx-0.5, trial_idx-0.5], ...
+                                    %     colors{3}, 'EdgeColor', 'none', 'FaceAlpha', 0.2, 'HandleVisibility', 'off');
+                                    % plot(fast_presses, trial_idx * ones(1, size(fast_presses, 1)), 'o', 'Color', colors{3}, 'MarkerFaceColor', colors{3});
+                                end
+
+                            else % 打鍵飛ばし
+                                obj.classified_keystrokes(trial_idx, keystorke_idx) = 4;
+                                % plot(t_n{keystorke_idx}, trial_idx, 'o', 'Color', colors{4}, 'MarkerFaceColor', colors{4});
+                                % fill([a_starts(keystorke_idx), a_ends(keystorke_idx), a_ends(keystorke_idx), a_starts(keystorke_idx)], ...
+                                %     [trial_idx+0.5, trial_idx+0.5, trial_idx-0.5, trial_idx-0.5], ...
+                                %     colors{4}, 'EdgeColor', 'none', 'FaceAlpha', 0.2, 'HandleVisibility', 'off');
+                            end
+
+                            % 各打鍵判定区間の中央の時刻に直線を引く
+                            % a_center = (a_starts(keystorke_idx) + a_ends(keystorke_idx)) / 2; % 平均値を計算
+                            % plot([a_center, a_center], [trial_idx+0.5, trial_idx-0.5], 'Color', [0.5, 0.5, 0.5], 'LineWidth', 1.5, 'HandleVisibility', 'off'); % 灰色の直線を描画
+                        end
+                    end
+                end
+            end
+        end
+
+        % 打鍵飛ばしが全打鍵の20%以上を占めるtrialを削除
+        function obj = reject_data(obj)
+            reject_trial_indeces = [];
+            for trial_idx = 1:obj.num_all_trials 
+                skipped_keystroke_indeces = find(~isnan(obj.classified_keystrokes(trial_idx, :, :)) == 4); % 打鍵飛ばしのindexを取得
+                num_skipped_keystrokes = numel(skipped_keystroke_indeces);
+                if num_skipped_keystrokes/obj.keystrokes.num_keystroke_sections(trial_idx) >= 0.2
+                    reject_trial_indeces = [reject_trial_indeces, trial_idx];
+                end
+            end
+
+            % reject処理
+            for idx = 1:length(reject_trial_indeces)
+                trial_idx = reject_trial_indeces(idx);
+
+                % 各データ配列の該当trialのデータをNaNに置き換える
+                obj.speed_levels(trial_idx, :, :) = NaN;
+                obj.tap_intervals(trial_idx, :, :) = NaN;
+                obj.beep_times_keys(trial_idx, :, :) = NaN;
+                obj.keystrokes.num_loops(trial_idx, :) = NaN;
+                obj.keystrokes.num_keys(trial_idx, :) = NaN;
+                obj.keystrokes.num_keystroke_sections(trial_idx, :) = NaN;
+                obj.pressed_times(trial_idx, :, :) = NaN;
+                obj.acceptance_start(trial_idx, :, :) = NaN;
+                obj.acceptance_end(trial_idx, :, :) = NaN;
+                obj.judge(trial_idx, :, :) = NaN;
+                obj.success_duration(trial_idx, 1) = NaN;
+                obj.corrected_pressed_times(trial_idx, :, :) = NaN;
+            end
+        end
+
+        % 最頻の打鍵速度で実行したtrialのデータだけを取得
+        function obj = load_target_data(obj)
+            % 該当trialの算出
+            obj.mode_speed_level = mode(obj.speed_levels(~isnan(obj.speed_levels)), 'all');
+            obj.num_target_trials = find(obj.speed_levels == obj.mode_speed_level); % main block全体を100trialとしたときの該当trialの番号
+            past_num_all_trials = obj.num_all_trials;
+            obj.num_all_trials = numel(obj.num_target_trials);
+            fprintf("target_trials are %d trials\n", obj.num_all_trials)
+
+            if obj.num_all_trials < 30
+                fprintf("Warning! target_data is only %d/%d trials\n", obj.num_all_trials, past_num_all_trials)
+            end
+
+            % 各データ配列の対象外のtrial行を削除し、残りを詰める処理
+            obj.speed_levels = obj.speed_levels(obj.num_target_trials, :, :);
+            obj.tap_intervals = obj.tap_intervals(obj.num_target_trials, :, :);
+            obj.beep_times_keys = obj.beep_times_keys(obj.num_target_trials, :, :);
+            obj.keystrokes.num_loops = obj.keystrokes.num_loops(obj.num_target_trials, :);
+            obj.keystrokes.num_keys = obj.keystrokes.num_keys(obj.num_target_trials, :);
+            obj.keystrokes.num_keystroke_sections = obj.keystrokes.num_keystroke_sections(obj.num_target_trials, :);
+            obj.pressed_times = obj.pressed_times(obj.num_target_trials, :, :);
+            obj.acceptance_start = obj.acceptance_start(obj.num_target_trials, :, :);
+            obj.acceptance_end = obj.acceptance_end(obj.num_target_trials, :, :);
+            obj.judge = obj.judge(obj.num_target_trials, :, :);
+            obj.success_duration = obj.success_duration(obj.num_target_trials, 1);
+            obj.corrected_pressed_times = obj.corrected_pressed_times(obj.num_target_trials, :, :);
+        end
+
+        function obj = sort_target_data(obj)
+            % success_duration の値を昇順に並び替え、そのインデックスを取得
+            [~, sorted_indices] = sort(obj.success_duration, 'ascend');
+            obj.success_duration = obj.success_duration(sorted_indices, :); % 追加した新しい配列も並び替え
+
+            % 各データ配列を sorted_indices に基づいて並び替え
+            obj.num_target_trials = obj.num_target_trials(sorted_indices); % 並び替えた trial 番号を更新
+            obj.speed_levels = obj.speed_levels(sorted_indices, :, :);
+            obj.tap_intervals = obj.tap_intervals(sorted_indices, :, :);
+            obj.beep_times_keys = obj.beep_times_keys(sorted_indices, :, :);
+            obj.keystrokes.num_loops = obj.keystrokes.num_loops(sorted_indices, :);
+            obj.keystrokes.num_keys = obj.keystrokes.num_keys(sorted_indices, :);
+            obj.keystrokes.num_keystroke_sections = obj.keystrokes.num_keystroke_sections(sorted_indices, :);
+            obj.pressed_times = obj.pressed_times(sorted_indices, :, :);
+            obj.acceptance_start = obj.acceptance_start(sorted_indices, :, :);
+            obj.acceptance_end = obj.acceptance_end(sorted_indices, :, :);
+            obj.judge = obj.judge(sorted_indices, :, :);
+            obj.corrected_pressed_times = obj.corrected_pressed_times(sorted_indices, :, :);
+        end
+    end
+
+    methods (Access = private)
+        % obj.acceptance_startとobj.acceptance_endの2,3次元を合わせて次元削減
+        function [acceptance_start_reduced, acceptance_end_reduced] = dimensional_reducer(obj)
+            num_keystroke_sections = obj.keystrokes.num_keystroke_sections;
+
+            % 次元削減後の配列の初期化
+            acceptance_start_reduced = NaN(obj.num_all_trials, max(num_keystroke_sections));
+            acceptance_end_reduced = NaN(obj.num_all_trials, max(num_keystroke_sections));
+
+            % 変換処理
+            for trial_idx = 1:obj.num_all_trials
+                for loop = 1:obj.keystrokes.num_loops(trial_idx)
+                    for key = 1:obj.num_keys
+                        keystroke_idx = 4 * (loop - 1) + key; % 打鍵番号の計算
+
+                        % 打鍵番号が有効範囲内か確認
+                        if keystroke_idx > num_keystroke_sections(trial_idx)
+                            break;
+                        end
+
+                        % 新しい配列に格納
+                        acceptance_start_reduced(trial_idx, keystroke_idx) = obj.acceptance_start(trial_idx, loop, key);
+                        acceptance_end_reduced(trial_idx, keystroke_idx) = obj.acceptance_end(trial_idx, loop, key);
+                    end
+                end
+            end
+        end
+
+        % データの保存
+        function save_data(obj, plot)          
+            % 保存先のファイル名とパスを作成
+            block_filename = sprintf('Sorted_all_trials_Result_%s.mat', ...
+                obj.participant_name);
+            save_path = fullfile(plot.output_folder, block_filename);
+            save_data = plot;
+            save(save_path, "save_data");
         end
     end
 end

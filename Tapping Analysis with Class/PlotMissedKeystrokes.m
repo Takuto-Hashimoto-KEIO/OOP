@@ -1,93 +1,89 @@
-classdef VisualizeKeystrokeError
+classdef PlotMissedKeystrokes
+    %PLOTMISSEDKEYSTROKES このクラスの概要をここに記述
+    %   詳細説明をここに記述
+
     properties
-        participant_name
-        block_type
-        num_block
-
-        num_trials
-        num_keys
-        tap_intervals
-
-        beep_times_keys
-        keystrokes
-        corrected_pressed_times
-        judge
-
-        acceptance_start
-        acceptance_end
-
-        corrected_beep_times_keys
-        pressed_times
-        window_delimiters
+        data
+        success_duration_end
+        output_folder
     end
 
     methods
-        function obj = VisualizeKeystrokeError(data)
-            % データを抽出
-            obj.participant_name = data.participant_name;
-            obj.num_block = data.num_block;
-            obj.block_type = data.block_type;
-
-            obj.beep_times_keys = data.beep_times_keys;
-            obj.corrected_pressed_times = data.corrected_pressed_times;
-            obj.judge = data.judge;
-            obj.num_trials = data.num_trials;
-            obj.num_keys = data.num_keys;
-            obj.keystrokes = data.keystrokes;
-
-            obj.acceptance_start = data.acceptance_start;
-            obj.acceptance_end = data.acceptance_end;
+        function obj = PlotMissedKeystrokes()
+            %PLOTMISSEDKEYSTROKES このクラスのインスタンスを作成
         end
 
-        % VisualizeKeystrokeErrorの全機能を一貫して実行
-        function run_visualize_keystroke_error(obj, folder_path)
-
-            % obj.acceptance_startとobj.acceptance_endの次元を削減
-            num_keystroke_sections = obj.keystrokes.num_keystroke_sections;
-            [obj.acceptance_start, obj.acceptance_end] = dimensional_reducer(obj, num_keystroke_sections);
-
-            plot_summary(obj, folder_path);
+        % PlotMissedKeystrokesの全体を一貫して実行
+        function obj = run_plot_missed_keystrokes(obj, data_from_sort_missed_keystrokes, folder_path)
+            obj.data = data_from_sort_missed_keystrokes;
+            obj = detect_success_duration_end(obj);
+            obj = plot_summary(obj, folder_path);
         end
 
-        function plot_summary(obj, folder_path)
+        % 打鍵成功持続時間の最後の成功打鍵の取得
+        function obj = detect_success_duration_end(obj)
+            obj.success_duration_end = NaN(obj.data.num_all_trials, 1);
+
+            for trial_idx = 1:obj.data.num_all_trials
+                % 現在のtrialにおいて、成功した打鍵（judgeが1）のインデックスを取得
+                success_indices = find(obj.data.judge(trial_idx, :) == 1);
+
+                if ~isempty(success_indices)
+                    first_success = success_indices(1); % 最初の成功インデックスを取得
+
+                    % 最初の成功インデックスに基づいて、task開始～最初の打鍵成功までの時間(秒)を一時計算
+                    temp_duration = (first_success / obj.data.keystrokes.num_keystroke_sections) * 20; % 20はtrial_task_time（秒）
+
+                    % temp_durationが3秒より大きい場合は、obj.success_duration_endを強制的に0とする（最初の打鍵成功が遅すぎるため）
+                    if temp_duration > 3
+                        obj.success_duration_end(trial_idx) = 0;
+                    else % 成功した打鍵が存在する場合のみ処理を進める
+
+                        % もしミスを挟んだ成功打鍵のペアが見つからない場合、最後の成功打鍵を末尾の成功インデックスとする
+                        if isempty(success_indices(find(diff(success_indices) ~= 1, 1, 'first')))
+                            obj.success_duration_end(trial_idx) = success_indices(end); % 連続成功が末尾まで続いた場合
+                        else
+                            % 最初の成功打鍵以降、連続した成功が途切れる直前の最後の成功打鍵の番号を取得
+                            obj.success_duration_end(trial_idx) = success_indices(find(diff(success_indices) ~= 1, 1, 'first'));
+                        end
+                    end
+                end
+            end
+        end
+
+        function obj = plot_summary(obj, folder_path)
             figure;
             hold on;
-            colors = {[0.5, 0.5, 0.5], 'b', [0, 0.5, 0], 'r'}; % 成功:黒, 遅れ:青, 先行:鈍い緑, 飛ばし:赤
+            colors = {[0.5, 0.5, 0.5], 'b', [0, 0.5, 0], 'r', 'y'}; % 成功:黒, 遅れ:青, 先行:鈍い緑, 飛ばし:赤, 打鍵成功持続時間の最後の成功打鍵：黄
             legend_labels = {'\color{black} \bullet Success', ...
                 '\color{blue} \bullet Delayed', ...
                 '\color[rgb]{0, 0.5, 0} \bullet Early', ...
                 '\color{red} \circ Skipped'};
 
-            for trial_idx = 1:obj.num_trials
+            for trial_idx = 1:obj.data.num_all_trials
 
                 % このtrialでの打鍵判定区間のリストを格納
-                a_starts = obj.acceptance_start(trial_idx, :);
-                a_ends = obj.acceptance_end(trial_idx, :);
+                a_starts = obj.data.acceptance_start(trial_idx, :);
+                a_ends = obj.data.acceptance_end(trial_idx, :);
 
-                t_n = cell(obj.keystrokes.num_keystroke_sections(trial_idx),1);
-                all_press_per_key = cell(obj.num_keys,1);
+                t_n = cell(obj.data.keystrokes.num_keystroke_sections(trial_idx),1);
+                all_press_per_key = cell(obj.data.num_keys,1);
 
                 % 1打鍵判定区間ごとにプロットする押し下し時刻などの準備
-                for loop_idx = 1:obj.keystrokes.num_loops(trial_idx)
-                    for key_idx = 1:obj.num_keys
+                for loop_idx = 1:obj.data.keystrokes.num_loops(trial_idx)
+                    for key_idx = 1:obj.data.num_keys
 
                         % 打鍵番号
                         keystorke_idx = 4*(loop_idx - 1) + key_idx;
 
                         % 到達した打鍵判定区間以降は、obj.judgeにNaNが格納されているため処理を行わない
-                        if obj.keystrokes.num_keystroke_sections(trial_idx) < keystorke_idx
+                        if obj.data.keystrokes.num_keystroke_sections(trial_idx) < keystorke_idx
                             break;
                         end
 
                         % 今回のキーを押した時刻を全て取得
-                        all_press_per_key{key_idx} = squeeze(obj.corrected_pressed_times(trial_idx, key_idx, :));
+                        all_press_per_key{key_idx} = squeeze(obj.data.corrected_pressed_times(trial_idx, key_idx, :));
                         all_press_per_key{key_idx} = all_press_per_key{key_idx}(all_press_per_key{key_idx} ~= 0); % ちょうど0の要素を削除
-
-                        % % 検証用
-                        % zero_indices = find(all_press_per_key == 0);
-                        % if ~isempty(zero_indices)
-                        %     disp(zero_indices);
-                        % end
 
                         % 今回の打鍵判定区間の中にあるキー押し下し時刻だけを格納
                         filtered_press_times = all_press_per_key{key_idx};
@@ -96,14 +92,14 @@ classdef VisualizeKeystrokeError
                 end
 
                 % 1打鍵判定区間ごとにプロット
-                for loop_idx = 1:obj.keystrokes.num_loops(trial_idx)
-                    for key_idx = 1:obj.num_keys
+                for loop_idx = 1:obj.data.keystrokes.num_loops(trial_idx)
+                    for key_idx = 1:obj.data.num_keys
 
                         % 打鍵番号
                         keystorke_idx = 4*(loop_idx - 1) + key_idx;
 
                         % 到達した打鍵判定区間以降は、obj.judgeにNaNが格納されているため処理を行わない
-                        if obj.keystrokes.num_keystroke_sections(trial_idx) < keystorke_idx
+                        if obj.data.keystrokes.num_keystroke_sections(trial_idx) < keystorke_idx
                             break;
                         end
 
@@ -115,14 +111,20 @@ classdef VisualizeKeystrokeError
 
                         all_press_per_key_idx = all_press_per_key{key_idx};
 
+                        % 打鍵を1打鍵判定区間ごとに分類してプロット（キー押し下し開始時刻のみ）
                         % 最初と最後の打鍵判定区間についてはプロットしない（配列の仕様の都合上）
-                        if keystorke_idx ~= 1 && keystorke_idx ~= obj.keystrokes.num_keystroke_sections(trial_idx)
-                            % 打鍵を1打鍵判定区間ごとに分類してプロット（キー押し下し開始時刻のみ）
-                            if obj.judge(trial_idx, keystorke_idx) == 1 % 打鍵成功
+                        if keystorke_idx ~= 1 && keystorke_idx ~= obj.data.keystrokes.num_keystroke_sections(trial_idx)
+
+                            if obj.data.judge(trial_idx, keystorke_idx) == 1 % 打鍵成功
                                 plot(t_n{keystorke_idx}, trial_idx * ones(1, size(t_n{keystorke_idx}, 1)), 'o', 'Color', colors{1}, 'MarkerFaceColor', colors{1});
+                                if keystorke_idx == obj.success_duration_end(trial_idx)
+                                    fill([a_starts(keystorke_idx), a_ends(keystorke_idx), a_ends(keystorke_idx), a_starts(keystorke_idx)], ...
+                                        [trial_idx+0.5, trial_idx+0.5, trial_idx-0.5, trial_idx-0.5], ...
+                                        colors{5}, 'EdgeColor', 'none', 'FaceAlpha', 0.2, 'HandleVisibility', 'off');
+                                end
 
                             % 注意：成功判定の場合は、その前後の押し下しはプロットされない
-                            elseif any(a_ends(keystorke_idx) < all_press_per_key_idx & all_press_per_key_idx <= a_ends(keystorke_idx + 1)) % 打鍵遅れ
+                            elseif obj.data.classified_keystrokes(trial_idx, keystorke_idx) == 1 % 打鍵遅れ
                                 late_presses = all_press_per_key_idx(a_ends(keystorke_idx) <  all_press_per_key_idx & all_press_per_key_idx <= a_ends(keystorke_idx + 1));
                                 fill([a_starts(keystorke_idx), a_ends(keystorke_idx), a_ends(keystorke_idx), a_starts(keystorke_idx)], ...
                                     [trial_idx+0.5, trial_idx+0.5, trial_idx-0.5, trial_idx-0.5], ...
@@ -154,8 +156,8 @@ classdef VisualizeKeystrokeError
 
             xlabel('Time (sec)');
             ylabel('Trials');
-            yticks(1:obj.num_trials);
-            title([obj.participant_name ' ' 'Block Summary： ' obj.block_type ' block ' num2str(obj.num_block)]);
+            yticks([1, 10:10:obj.data.num_all_trials]); % y軸のラベルを1, 10, 20, ... のみに設定
+            title([obj.data.participant_name ' ' 'Sorted all ' num2str(obj.data.num_all_trials) ' trials ' num2str(obj.data.speed_levels(1)) ' Hz']);
             % legend(legend_labels, 'Location', 'best');
             % legend(legend_labels, 'Location', 'northeast', 'AutoUpdate', 'off');
             
@@ -167,52 +169,24 @@ classdef VisualizeKeystrokeError
             fontsize(36,"points")
             hold off;
 
-            output_folder = fullfile(folder_path, 'Keystroke_Block_Summary');
-            if ~exist(output_folder, 'dir')
-                mkdir(output_folder);
+            obj.output_folder = fullfile(folder_path, 'Keystroke_Block_Summary');
+            if ~exist(obj.output_folder, 'dir')
+                mkdir(obj.output_folder);
             end
 
             % 保存ファイル名を定義
-            fig_filename_fig = fullfile(output_folder, ['subject_' obj.participant_name '_block_summary_' obj.block_type '_block_' num2str(obj.num_block) '.fig']);
-            fig_filename_jpg = fullfile(output_folder, ['subject_' obj.participant_name '_block_summary_' obj.block_type '_block_' num2str(obj.num_block) '.jpg']);
+            fig_filename_fig = fullfile(obj.output_folder, ['subject_' obj.data.participant_name '_sorted_all_trials.fig']);
+            fig_filename_jpg = fullfile(obj.output_folder, ['subject_' obj.data.participant_name '_sorted_all_trials.jpg']);
 
-            % 保存処理を実行
             saveas(gcf, fig_filename_fig, 'fig');  % .fig形式で保存
 
             fig = gcf;
             fig.Units = 'normalized';
             fig.OuterPosition = [0 0 1 1]; % 全画面表示
-
             drawnow; % 画面更新を強制
             pause(0.1);
+            
             saveas(gcf, fig_filename_jpg, 'jpg');  % .jpg形式で保存
-        end
-    end
-
-    methods (Access = private)
-        % obj.acceptance_startとobj.acceptance_endの2,3次元を合わせて次元削減
-        function [acceptance_start_reduced, acceptance_end_reduced] = dimensional_reducer(obj, num_keystroke_sections)
-            % 次元削減後の配列の初期化
-            acceptance_start_reduced = NaN(obj.num_trials, max(num_keystroke_sections));
-            acceptance_end_reduced = NaN(obj.num_trials, max(num_keystroke_sections));
-
-            % 変換処理
-            for trial_idx = 1:obj.num_trials
-                for loop = 1:obj.keystrokes.num_loops(trial_idx)
-                    for key = 1:obj.num_keys
-                        keystroke_idx = 4 * (loop - 1) + key; % 打鍵番号の計算
-
-                        % 打鍵番号が有効範囲内か確認
-                        if keystroke_idx > num_keystroke_sections(trial_idx)
-                            break;
-                        end
-
-                        % 新しい配列に格納
-                        acceptance_start_reduced(trial_idx, keystroke_idx) = obj.acceptance_start(trial_idx, loop, key);
-                        acceptance_end_reduced(trial_idx, keystroke_idx) = obj.acceptance_end(trial_idx, loop, key);
-                    end
-                end
-            end
         end
     end
 end
