@@ -1,0 +1,40 @@
+classdef DataSaver
+    % データの保存先のフォルダを作成し、ファイル名をつけてデータを保存
+    % 汎用的にする必要がある
+    methods
+        function subject_folder = save_data(~, data, save_path)
+            subject_name = data.cfg.cond.num_participant; % Subject名を取得
+
+            % block番号の取得、保存ファイル名の作成（ファイルの種類によって分岐）
+            if isfield(data.cfg.cond, 'num_block') % 個別blockのデータの場合
+                block_number = data.cfg.cond.num_block;
+                file_name = sprintf('%s_block_%s.mat', subject_name, block_number); % 保存ファイル名の作成
+            elseif isfield(data.result, 'target_trials') % 関心trialのみのデータの場合
+                file_name = sprintf('%s_all_target_%d_trials.mat', subject_name, numel(data.result.target_trials)); % 保存ファイル名の作成
+            else % 全blockの結合データの場合
+                file_name = sprintf('%s_all_blocks.mat', subject_name); % 保存ファイル名の作成
+            end
+
+            % 保存フォルダの作成
+            subject_folder = fullfile(save_path, subject_name);
+            if ~exist(subject_folder, 'dir')
+                mkdir(subject_folder);
+            end
+
+            file_path = fullfile(subject_folder, file_name);
+
+            % 保存データの定義
+            cfg = data.cfg;
+            result = data.result;
+            
+            % データの保存
+            try
+                save(file_path, 'cfg', 'result');
+                fprintf('Data saved successfully: %s\n', file_path);
+            catch ME
+                fprintf('Error saving data: %s\n', ME.message);
+            end
+        end
+    end
+end
+

@@ -1,0 +1,182 @@
+classdef TargetTrialExtractor
+    % 全blockの打鍵データを結合し、関心trial以外を削除
+    %
+    
+    properties
+    end
+
+    methods(Access=public)
+        function obj = TargetTrialExtractor()
+        end
+    end
+
+    methods
+        % このクラスのすべての処理を一貫して実行
+        function [all_blocks_data, target_data] = extract_data(obj, datapath)
+
+            [result, cfg] = load_saved_data(obj, datapath);
+            all_blocks_data.cfg = cfg; % 編集前のcfgを先に保存
+            
+            [result, cfg.cond.total_trials] = generate_target_trials(obj, result, cfg.cond.total_trials);
+            result.target.target_data = generate_target_data(obj, result.target.target_trials, result.all_blocks);
+
+            % 出力を整理
+            all_blocks_data.result = result.all_blocks;
+            target_data.cfg = cfg;
+            target_data.result = result.target;
+        end
+
+
+        % 保存したblock別データの取得→結合
+        function [result, cfg] = load_saved_data(obj, datapath)
+
+            % 出力を初期化
+            % result.all_blocks = struct();
+            all_blocks = struct( ...
+                'judge', [], 'success_duration', [], 'tap_speed_levels', [], ...
+                'tap_intervals', [], 'beep_times_keys', [], 'first_beep_times',  [], ...
+                'acception_window_start', [],'acception_window_end', [], ...
+                'pressed_times', [], 'first_misstap_indices', [], ...
+                'first_misstap_time', [], 'measured_blocks', []);
+
+            file_list = dir(fullfile(datapath, '*.mat')); % フォルダ内の.matファイルを取得
+
+            % ファイルごとに処理を実行
+            for file_idx = 1:length(file_list)
+                [all_blocks, cfg] = obj.connect_data(all_blocks, file_list, file_idx); % データごとにtrialの次元を結合
+            end
+
+            cfg.datapath = datapath;
+            cfg.cond.total_trials = size(all_blocks.judge, 1);
+            result.all_blocks = all_blocks;
+        end
+
+
+        % 保存したblock別データを結合
+        function [all_blocks, cfg] = connect_data(obj, all_blocks, file_list, file_idx)
+
+            % 出力を初期化
+            cfg.cond = struct();
+
+            % ファイルのフルパスを取得
+            file_name = file_list(file_idx).name;
+            full_file_path = fullfile(file_list(file_idx).folder, file_name);
+
+            % ファイルのロード
+            input_data = load(full_file_path);
+
+            % cfg.condの取得、編集
+            cfg.cond = input_data.cfg.cond;
+            if isfield(cfg.cond, 'num_block')
+                cfg.cond = rmfield(cfg.cond, 'num_block');
+            end
+
+            all_blocks.judge = vertcat(all_blocks.judge, input_data.result.raw.judge);
+            all_blocks.success_duration = vertcat(all_blocks.success_duration, input_data.result.raw.success_duration);
+            all_blocks.tap_speed_levels = vertcat(all_blocks.tap_speed_levels, input_data.result.raw.tap_speed.interval_indices);
+            all_blocks.tap_intervals = vertcat(all_blocks.tap_intervals, input_data.result.raw.tap_speed.tap_intervals);
+            all_blocks.beep_times_keys = vertcat(all_blocks.beep_times_keys, input_data.result.edited.beep_times_keys);
+            all_blocks.first_beep_times = vertcat(all_blocks.first_beep_times, input_data.result.edited.first_beep_times);
+            all_blocks.acception_window_start = vertcat(all_blocks.acception_window_start, input_data.result.edited.acception_window_start);
+            all_blocks.acception_window_end = vertcat(all_blocks.acception_window_end, input_data.result.edited.acception_window_end);
+
+            % サイズ調整と結合
+            [current_data_padded, new_data_padded] = TargetTrialExtractor.make_same_size(all_blocks.pressed_times, input_data.result.edited.pressed_times);
+            all_blocks.pressed_times = vertcat(current_data_padded, new_data_padded);
+
+            all_blocks.first_misstap_indices = vertcat(all_blocks.first_misstap_indices, input_data.result.generated.first_misstap_indices);
+            all_blocks.first_misstap_time = vertcat(all_blocks.first_misstap_time, input_data.result.generated.first_misstap_time);
+
+            num_last_trial = size(input_data.result.raw.judge, 1);
+            all_blocks.measured_blocks = vertcat(all_blocks.measured_blocks, repelem(file_idx, num_last_trial)');
+        end
+
+        % 関心trialの番号リストの取得
+        function [result, total_trials] = generate_target_trials(obj, result, total_trials)
+            speed_levels = result.all_blocks.tap_speed_levels;
+            tap_intervals = result.all_blocks.tap_intervals;
+            judge = result.all_blocks.judge;
+
+            % 要求打鍵速度の最頻値（Hz）とそのレベルを取得
+            result.target.mode_speed_level = mode(speed_levels(~isnan(speed_levels)), 'all');
+            mode_speed = 1 / mode(tap_intervals(~isnan(tap_intervals)), 'all');
+            result.target.mode_speed = round(mode_speed, 2, 'significant'); % 四捨五入で有効数字2桁に丸め
+
+            % mode_speed_levelを持つtrial番号を抽出
+            target_trials = find(speed_levels == result.target.mode_speed_level); % 該当trialの番号
+            past_total_trials = total_trials;
+            total_trials = numel(target_trials);
+            fprintf("target_trials are %d trials\n", total_trials)
+
+            if total_trials < 30
+                fprintf("Warning! target_data is only %d/%d trials\n", total_trials, past_total_trials)
+            end
+
+            % Judge=0が全打鍵の50%以上を占めるtrial番号をtarget_trialsから除外【要調整】
+            rejected_trials = [];
+            for i = 1:length(target_trials)
+                trial_idx = target_trials(i); % ターゲットのトライアルのみから参照
+                total_misstaps = numel(find(judge(trial_idx, :, :) == 0)); % 打鍵失敗の総数
+                total_tap_sections = numel(find(~isnan(judge(trial_idx, :, :) == 0))); % 要求打鍵の総数
+
+                % 各trialでのミス打鍵の割合を取得
+                result.target.misstap_rate(trial_idx) = total_misstaps/total_tap_sections;
+
+                if total_misstaps/total_tap_sections >= 0.5
+                    rejected_trials = [rejected_trials, trial_idx];
+                end
+            end
+
+            target_trials(ismember(target_trials, rejected_trials')) = [];
+            total_trials = numel(target_trials);
+
+            fprintf("  rejected_trials are %d trials\n", numel(rejected_trials))
+            fprintf("Finally, target_trials are %d trials\n", total_trials)
+
+            % 出力を整理
+            result.target.target_trials = target_trials;
+            result.target.rejected_trials = rejected_trials;
+        end
+
+        % target_trials（関心trialの番号リスト）を参照して各打鍵データ（target_data）で関心trial以外を削除
+        function target_data = generate_target_data(obj, target_trials, all_blocks)
+            
+            target_data = all_blocks; % 全打鍵データを複製
+
+            fields_to_filter = fieldnames(target_data);
+            for i = 1:numel(fields_to_filter)
+                field_name = fields_to_filter{i};
+                if size(target_data.(field_name), 1) >= max(target_trials)
+                    target_data.(field_name) = target_data.(field_name)(target_trials, :, :);
+                end
+            end
+        end
+    end
+
+    methods (Static)
+        % 結合するためにデータの大きさをそろえて、結合
+        function [current_data_padded, new_data_padded] = make_same_size(current_data, new_data)
+
+            if ~isempty(current_data)
+                % 各配列のサイズを取得
+                [current_dim1, current_dim2, current_dim3] = size(current_data);
+                [new_dim1, new_dim2, new_dim3] = size(new_data);
+
+                % 3次元目の最大サイズを決定
+                max_dim3 = max(current_dim3, new_dim3);
+
+                % サイズを調整してNaNで埋める
+                current_data_padded = NaN(current_dim1, current_dim2, max_dim3);
+                new_data_padded = NaN(new_dim1, new_dim2, max_dim3);
+
+                % 元のデータを埋める
+                current_data_padded(:, :, 1:current_dim3) = current_data;
+                new_data_padded(:, :, 1:new_dim3) = new_data;
+            else
+                current_data_padded = current_data;
+                new_data_padded = new_data;
+            end
+        end
+    end
+
+end

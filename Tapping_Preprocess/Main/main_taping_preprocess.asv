@@ -1,0 +1,55 @@
+clear
+close all
+
+script_path = fileparts(mfilename('fullpath')); % このスクリプトのフォルダパスを取得
+addpath(fullfile(script_path, '..', 'src', 'Processor')); % 'Processor' フォルダをパスに追加
+addpath(fullfile(script_path, '..', 'src')); % 'src' フォルダをパスに追加
+
+%% 読み込むフォルダパスを指定
+folder_path = "C:\Users\takut\OneDrive - keio.jp\牛場研 M1~\修論研究\toolbox\Hashimoto Resarch\Progress 2\Results\20250114~ 予備実験4\20250206_Y413\tapping_data";
+file_list = dir(fullfile(folder_path, '*.mat')); % フォルダ内の.matファイルを取得
+
+%% 保存先のフォルダパスを指定（Subject名は入れない）
+save_path = "C:\Users\takut\OneDrive - keio.jp\牛場研 M1~\修論研究\toolbox\Hashimoto Resarch\Progress 2\Processed_Results\Tapping";
+file_list = extract_main_block_data(file_list);
+
+%% 全blockのデータをまとめて処理
+for fileIdx = 1:length(file_list)
+    close all
+    cfg.datapath = fullfile(folder_path, file_list(fileIdx).name); % 各.matファイルのパスを指定
+    fprintf('Processing file: %s\n', cfg.datapath); % 処理中のファイル名を表示
+
+    %% データの読みだし→処理
+    blockdata = TapProcessor();
+    data_tap = data_tap.processing(cfg);
+
+    %% trialの除去必要？→一旦無し
+
+    %% 結果の保存
+    saver = DataSaver(); % 保存処理のインスタンスを作成
+    saved_path = saver.save_data(data_tap, save_path); % (保存したいデータ, 保存先のパス)
+end
+
+%% 全blockを結合し、関心trial以外を削除
+extractor = TargetTrialExtractor();
+[all_blocks_data, target_data] = extractor.extract_data(saved_path);
+
+%% データの保存
+saved_path = saver.save_data(data_tap, save_path); % (保存したいデータ, 保存先のパス) % 全データを保存
+saved_path = saver.save_data(data_tap, save_path); % (保存したいデータ, 保存先のパス) % 関心trialのみのデータを保存
+
+% "blockの種類" が "M" のファイルのみを選択
+function filtered_files = extract_main_block_data(file_list)
+filtered_files = [];
+for i = 1:length(file_list)
+    file_name = file_list(i).name;
+    % 正規表現で "blockの種類" を抽出
+    match = regexp(file_name, 'Block_Result_.*_(.)_block\d+_\d+', 'tokens');
+    if ~isempty(match)
+        block_type = match{1}{1}; % "blockの種類" を取得
+        if strcmp(block_type, 'M') % 条件に合うか判定
+            filtered_files = [filtered_files; file_list(i)];
+        end
+    end
+end
+end
