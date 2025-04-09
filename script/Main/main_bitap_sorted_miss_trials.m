@@ -24,7 +24,7 @@ cfg.lpfrq = 30;
 ersp_all = [];
 frqfiled_all = [];
 
-% 各ファイルを読み込み、必要なデータを被験者ごとにtrial方向に連結
+% 各ファイルを読み込み、必要なデータを被験者ごとにtrial方向に連結（）
 for fileIdx = 1:length(fileList)
     close all
     cfg.datapath = fullfile(folderPath, fileList(fileIdx).name); % 各.matファイルのパスを指定
