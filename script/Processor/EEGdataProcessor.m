@@ -33,7 +33,7 @@ classdef EEGdataProcessor
                 % 一時的にコメントアウト
                 % % 1被験者について、block別に分かれた各ファイルを読み込み、バンドパスなどの処理をし、連結
                 % spafiled_all_blocks = EEGdataProcessor.process_EEG(cfg, folder_path, file_list);
-                % 
+                
                 % 保存先のフォルダの作成
                 EEG_folder = fullfile(save_path, 'EEG');
                 subject_name = file_list(1).name(1:4); % 解析したファイル名の冒頭4文字を、Subject名として取得
@@ -41,7 +41,7 @@ classdef EEGdataProcessor
                 if ~exist(subject_folder, 'dir') % 保存フォルダの作成
                     mkdir(subject_folder);
                 end
-                % 
+                
                 % % spafiled_all_blocksの保存
                 % file_path = fullfile(subject_folder, 'spafiled_all_blocks');
                 % save(file_path, 'spafiled_all_blocks', '-v7.3');

@@ -1,0 +1,70 @@
+% 仮説検定：ランダム時間窓から得られたt値の分布の中で、もつれ時刻のデータのt値（一つ）がどのPercentileにくるのかを見る
+function p_value = run_hypothesis_test(t, t_random, save_path, coi)
+p_value = sum(t < t_random) / length(t_random); % p=（もつれ時よりもランダム時の方がt値が大きいものの数）/5000
+
+% 検定結果の出力
+fprintf('Permutation test p-value: %.5f\n', p_value);
+
+% % 結果データの保存
+% save(fullfile(save_path, 'permutation_test_results.mat'), 't', 't_random', 'p_value');
+
+% ヒストグラムで可視化
+figure;
+histogram(t_random, 20, 'FaceColor', [0.5 0.5 0.5]); % 2つ目の入力値はビンの個数 % グレーにした
+xlabel('t値');
+ylabel('算出回数');
+title(sprintf('%d番電極でのα振幅zスコアの並べ替え検定', coi));
+% title(sprintf('%d番電極でのβ振幅zスコアの並べ替え検定', coi));
+
+% title(sprintf('もつれ手の非対応電極でのα振幅zスコアの並べ替え検定'));
+% title(sprintf('もつれ手の対応電極でのα振幅zスコアの並べ替え検定'));
+% title(sprintf('もつれ手の非対応電極でのβ振幅zスコアの並べ替え検定'));
+% title(sprintf('もつれ手の対応電極でのβ振幅zスコアの並べ替え検定'));
+
+hold on;
+
+% 打鍵もつれ時のt値の位置に赤い破線を追加
+xline(t, '--r', 'LineWidth', 3);
+
+% p_value を 打鍵もつれ時のt値 の位置に赤い文字で表示
+if mean(xlim) < t 
+    shift = - 0.2 * range(xlim);
+else
+    shift = 0.02 * range(xlim);
+end
+text(t + shift, max(ylim) * 0.9, sprintf('p = %.5f', p_value), ...
+    'Color', 'r', 'FontSize', 12, 'FontWeight', 'bold', 'HorizontalAlignment', 'left');
+fontsize(42,"points");
+hold off;
+
+% 出力した図の保存
+figHandles = findall(0, 'Type', 'figure'); % 開いている全てのfigureを取得
+
+for i = 1:length(figHandles)
+    fig = figHandles(i);
+    figure(fig); % アクティブ化
+    % fig.Units = 'normalized';
+    % fig.OuterPosition = [0 0 1 1]; % 全画面表示
+    fig.Units = 'normalized';
+    fig.OuterPosition = [0.25 0 0.5 1]; % 縦長の設定
+    drawnow; % 画面更新を強制
+    pause(0.05); % 描画の安定のための一時停止
+
+    % 保存ファイル名の作成（番号は逆順に）
+    baseFileName = sprintf('alpha_burst_test_fig%02d_coi=%d', length(figHandles)-i+1, coi);
+    % baseFileName = sprintf('beta_burst_test_fig%02d_coi=%d', length(figHandles)-i+1, coi);
+
+    % baseFileName = sprintf('alpha_burst_test_cont_fig%02d_coi=%d', length(figHandles)-i+1, coi);
+    % baseFileName = sprintf('alpha_burst_test_posi_fig%02d_coi=%d', length(figHandles)-i+1, coi);
+    % baseFileName = sprintf('alpha_burst_test_posi_fig%02d_coi=%d', length(figHandles)-i+1, coi);
+    % baseFileName = sprintf('beta_burst_test_posi_fig%02d_coi=%d', length(figHandles)-i+1, coi);
+
+    saveFileNamePNG = fullfile(save_path, [baseFileName, '.png']);
+    saveFileNameMAT = fullfile(save_path, [baseFileName, '.mat']);
+
+    % 図を保存（例: 'figure1.png', 'figure2.png', ...）
+    saveas(fig, saveFileNamePNG);
+    f = fig; % 不要な警告を避けるため
+    save(saveFileNameMAT, 'f');
+end
+end

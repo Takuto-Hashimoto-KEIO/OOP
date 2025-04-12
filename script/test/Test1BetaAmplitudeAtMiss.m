@@ -1,0 +1,101 @@
+classdef Test1BetaAmplitudeAtMiss
+    % 全被験者の打鍵もつれ時1秒窓のβ振幅変化の検定
+
+    properties
+    end
+
+    methods(Access=public)
+        function obj = Test1BetaAmplitudeAtMiss()
+        end
+    end
+
+    methods (Static)
+        % このクラスのすべての処理を一貫して実行
+        function test = run(coi, EEG_data_path, tap_data_path, save_path)
+
+            %% 必要なパスの追加
+            % このscriptのパスを設定
+            this_folder_path  = fileparts(mfilename('fullpath')); % このスクリプトのフォルダパスを絶対パスとして取得
+            addpath(fullfile(this_folder_path, 'src')); % 'Processor' フォルダをパスに追加
+
+            %% データのロード、格納
+            [first_misstap_indices_all_sbj, first_misstap_time_all_sbj, total_taget_trials, total_subjects] = load_tapping_data(tap_data_path); % 打鍵
+            EEG_data_all_sbj = load_EEG_data(EEG_data_path, coi, total_subjects); % EEG：coiのデータだけ取り出す
+
+            %% ヒルベルト変換などの前処理
+            processed_EEG_data_coi_all_sbj = cell(total_subjects, 1); % 出力配列の初期化
+            for sbj_idx = 1:total_subjects
+                processed_EEG_data_coi_all_sbj{sbj_idx} = preprocess_EEG(EEG_data_all_sbj{sbj_idx});
+            end
+
+            %% trialごとに振幅の値を正規化、REST の平均値と分散を計算して、trial全体をzスコア化する
+            EEG_z_score_all_sbj = generate_EEG_z_score(processed_EEG_data_coi_all_sbj, total_subjects);
+
+            %% 計算結果を格納する配列の初期化
+            num_counts = 5000;
+            misstap_EEG_data_all_sbj = NaN(total_subjects, 1);
+            rand_EEG_data_all_sbj = NaN(total_subjects, num_counts);
+            num_miss_trials_all_sbj = NaN(total_subjects, 1);
+            t_random = NaN(num_counts, 1);
+
+            %% 打鍵もつれ時
+            % 打鍵もつれが起きた手の支配半球chの特定と格納 1ならC3を、2ならC4を参照
+            tap_end_hand_labels = generate_tap_end_hand_labels(first_misstap_indices_all_sbj);
+
+            % %% tap_end_hand_labelsの割合計算（右手で初めて打鍵がもつれた割合）
+            % % 出力の初期化
+            % sum_right_hand_miss = 0; % 右手で初めて打鍵がもつれた回数の全被験者合計
+            % total_labels = 0; % 初めて打鍵がもつれた回数の全被験者合計
+            % tap_end_hand_rate_per_sbj = NaN(total_subjects, 1); % 右手で初めて打鍵がもつれた割合（被験者ごと）
+            % for sbj_idx = 1:total_subjects
+            %     labels = tap_end_hand_labels{sbj_idx};
+            %     labels_no_nan = labels(~isnan(labels));
+            % 
+            %     num_right_hand_miss_per_sbj = numel(find(labels_no_nan == 1));
+            %     num_labels_per_sbj = numel(labels_no_nan);
+            % 
+            %     tap_end_hand_rate_per_sbj(sbj_idx) = num_right_hand_miss_per_sbj/num_labels_per_sbj;
+            % 
+            %     sum_right_hand_miss = sum_right_hand_miss + num_right_hand_miss_per_sbj; % 右手で初めて打鍵がもつれた回数の全被験者合計
+            %     total_labels = total_labels + num_labels_per_sbj; % 初めて打鍵がもつれた回数の全被験者合計
+            % end
+            % 
+            % tap_end_hand_rate = sum_right_hand_miss/total_labels; % 右手で初めて打鍵がもつれた割合（全被験者一括）
+            % fprintf('tap_end_hand_rate: %.2f\n', tap_end_hand_rate);
+
+            %% 各被験者について、データ取得
+            for sbj_idx = 1:total_subjects
+                [misstap_EEG_data, rand_EEG_data, num_miss_trials] = generate_misstap_EEG_data( ...
+                    EEG_z_score_all_sbj{sbj_idx}, tap_end_hand_labels{sbj_idx}, squeeze(first_misstap_time_all_sbj(:,sbj_idx)), total_taget_trials(sbj_idx));
+                misstap_EEG_data_all_sbj(sbj_idx) = misstap_EEG_data;
+                rand_EEG_data_all_sbj(sbj_idx,:) = rand_EEG_data;
+                num_miss_trials_all_sbj(sbj_idx) = num_miss_trials; % 打鍵もつれがあったtrialの総数
+            end
+
+
+            %% もつれの時刻でのt値を計算
+            [~,~,~,stats] = ttest(misstap_EEG_data_all_sbj);
+            t_miss = stats.tstat;
+
+            %% ランダム時刻でのt値を計算            
+            for i = 1:num_counts
+                [~,~,~,stats] = ttest(squeeze(rand_EEG_data_all_sbj(:,i)));
+                t_random(i) = stats.tstat;
+            end
+
+            %% 仮説検定：ランダム時間窓から得られたt値の分布の中で、もつれ時刻のデータのt値（一つ）がどのPercentileにくるのかを見る
+            p_value = run_hypothesis_test(t_miss, t_random, save_path, coi);
+
+            %% 出力データの整理、保存
+            test = struct('p_value', p_value, 't_miss', t_miss, 't_random', t_random, ...
+                'misstap_EEG_data_all_sbj', misstap_EEG_data_all_sbj, 'rand_EEG_data_all_sbj', ...
+                rand_EEG_data_all_sbj, 'num_miss_trials_all_sbj', num_miss_trials_all_sbj);
+            % save(fullfile(save_path, 'alpha_burst_test_cont_results.mat'), 'test');
+            % save(fullfile(save_path, 'alpha_burst_test_posi_results.mat'), 'test');
+            save(fullfile(save_path, 'beta_burst_test_cont_results.mat'), 'test');
+            % save(fullfile(save_path, 'beta_burst_test_posi_results.mat'), 'test');
+            disp('OK')
+        end
+    end
+
+end
